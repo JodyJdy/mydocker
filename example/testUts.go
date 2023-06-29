@@ -13,6 +13,7 @@ func main() {
 		Cloneflags: syscall.CLONE_NEWUTS,
 	}
 
+	// 将当前进程的 输入输出流 附加到 启动的进程上面
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
