@@ -1,11 +1,11 @@
 package commandline
 
 import (
-	"containers"
 	"fmt"
 	"github.com/urfave/cli"
 	"log"
 	"os"
+	"run"
 )
 
 func StartCommands() {
@@ -39,7 +39,7 @@ var RunCommand = cli.Command{
 		cmd := context.Args().Get(0)
 		// 获取tty参数
 		tty := context.Bool("ti")
-		containers.Run(tty, cmd)
+		run.Run(tty, cmd)
 		return nil
 	},
 }
@@ -61,7 +61,7 @@ var InitCommand = cli.Command{
 		// 获取命令
 		cmd := context.Args().Get(0)
 		log.Println("command is :", cmd)
-		containers.RunContainerInitProcess(cmd, nil)
+		run.RunContainerInitProcess(cmd, nil)
 		return nil
 	},
 }

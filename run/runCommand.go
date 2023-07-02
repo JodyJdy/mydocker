@@ -1,6 +1,7 @@
-package containers
+package run
 
 import (
+	"containers"
 	"fmt"
 	"log"
 	"os"
@@ -8,7 +9,7 @@ import (
 )
 
 func Run(tty bool, command string) {
-	parent := NewParentProcess(tty, command)
+	parent := containers.NewParentProcess(tty, command)
 	if err := parent.Start(); err != nil {
 		log.Println(err)
 	}

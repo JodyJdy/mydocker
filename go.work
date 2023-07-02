@@ -1,7 +1,9 @@
 go 1.20
 
 use (
+// 需要在这里面添加所有直接创建的模块，这样模块间才可以正常依赖
 	commandline
 	./containers
+	./run
 	.
 )
