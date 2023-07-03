@@ -1,6 +1,7 @@
 package commandline
 
 import (
+	"cgroups"
 	"fmt"
 	"github.com/urfave/cli"
 	"log"
@@ -29,6 +30,18 @@ var RunCommand = cli.Command{
 			Name:  "ti",
 			Usage: "enable tty",
 		},
+		cli.StringFlag{
+			Name:  "m",
+			Usage: "memory limit",
+		},
+		cli.StringFlag{
+			Name:  "cpushare",
+			Usage: "cpushare limit",
+		},
+		cli.StringFlag{
+			Name:  "cpuset",
+			Usage: "cpuset limit",
+		},
 	},
 	// 具体的执行命令
 	Action: func(context *cli.Context) error {
@@ -36,10 +49,18 @@ var RunCommand = cli.Command{
 			return fmt.Errorf("missing containers command")
 		}
 		// 获取要执行run的命令
-		cmd := context.Args().Get(0)
+		var cmdArray []string
+		for _, arg := range context.Args() {
+			cmdArray = append(cmdArray, arg)
+		}
 		// 获取tty参数
 		tty := context.Bool("ti")
-		run.Run(tty, cmd)
+		res := &cgroups.ResourceConfig{
+			MemoryLimit: context.String("m"),
+			CpuSet:      context.String("cpuset"),
+			CpuShare:    context.String("cpushare"),
+		}
+		run.Run(tty, cmdArray, res)
 		return nil
 	},
 }
@@ -61,7 +82,7 @@ var InitCommand = cli.Command{
 		// 获取命令
 		cmd := context.Args().Get(0)
 		log.Println("command is :", cmd)
-		run.RunContainerInitProcess(cmd, nil)
+		run.RunContainerInitProcess()
 		return nil
 	},
 }
