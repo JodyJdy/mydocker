@@ -28,6 +28,8 @@ func NewParentProcess(tty bool) (*exec.Cmd, *os.File) {
 	}
 	// 用于读取 管道中的命令
 	cmd.ExtraFiles = []*os.File{readPipe}
+	// 临时的设置工作目录为 /root/busybox， 里面放了 busybox 的根文件系统@todo 后面进行替换
+	cmd.Dir = "/root/busybox"
 	return cmd, writePipe
 }
 
