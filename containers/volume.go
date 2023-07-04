@@ -93,3 +93,13 @@ func DeleteMountPoint(containerBaseUrl string) {
 		fmt.Printf("RemoveDir %s error %v", mergedDir, err)
 	}
 }
+func DeleteLowerDir(containerBaseUrl string) {
+
+}
+func DeleteWorkDir(containerBaseUrl string) {
+
+}
+
+func DeleteUpperDir(containerBaseUrl string) {
+
+}
