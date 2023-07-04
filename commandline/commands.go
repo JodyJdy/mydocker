@@ -42,6 +42,10 @@ var RunCommand = cli.Command{
 			Name:  "cpuset",
 			Usage: "cpuset limit",
 		},
+		cli.StringFlag{
+			Name:  "v",
+			Usage: "volume",
+		},
 	},
 	// 具体的执行命令
 	Action: func(context *cli.Context) error {
@@ -60,7 +64,9 @@ var RunCommand = cli.Command{
 			CpuSet:      context.String("cpuset"),
 			CpuShare:    context.String("cpushare"),
 		}
-		run.Run(tty, cmdArray, res)
+		// 获取卷挂载参数
+		volume := context.String("v")
+		run.Run(tty, cmdArray, res, volume)
 		return nil
 	},
 }
@@ -78,10 +84,7 @@ var InitCommand = cli.Command{
 	},
 	// 具体的执行命令
 	Action: func(context *cli.Context) error {
-		log.Println("init come on")
-		// 获取命令
-		cmd := context.Args().Get(0)
-		log.Println("command is :", cmd)
+		log.Println("启动 init 进程")
 		err := run.RunContainerInitProcess()
 		if err != nil {
 			return err

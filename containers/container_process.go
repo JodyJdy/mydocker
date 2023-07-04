@@ -9,11 +9,11 @@ import (
 
 // NewParentProcess 创建一个父进程， 父进程的目的是
 // 真正的执行cmd，并用cmd 对应的进程替换自身
-func NewParentProcess(tty bool) (*exec.Cmd, *os.File) {
+func NewParentProcess(tty bool, volume string) (*exec.Cmd, *os.File, string) {
 	readPipe, writePipe, err := NewPipe()
 	if err != nil {
 		_ = fmt.Errorf("new pipe error %v", err)
-		return nil, nil
+		return nil, nil, ""
 	}
 	// 调用mydocker的 init命令， 执行command
 	cmd := exec.Command("/proc/self/exe", "init")
@@ -32,8 +32,9 @@ func NewParentProcess(tty bool) (*exec.Cmd, *os.File) {
 	containerBaseUrl := "/root/"
 	// 工作目录，为 overlay文件系统中的 merge目录
 	// 容器进程，会以merged目录作为根目录运行
-	cmd.Dir = NewWorkSpace(containerBaseUrl)
-	return cmd, writePipe
+	cmd.Dir = NewWorkSpace(containerBaseUrl, volume)
+	fmt.Println(cmd.Dir)
+	return cmd, writePipe, containerBaseUrl
 }
 
 // NewPipe 创建管道对象

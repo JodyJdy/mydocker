@@ -51,12 +51,24 @@ func testCgroup() {
 		//打印fork出的进程的id
 		fmt.Println(cmd.Process.Pid)
 		//创建cgroup
-		os.Mkdir(path.Join(cgroupMemoryHierachyMount, "testmemorylimit"), 0755)
+		err := os.Mkdir(path.Join(cgroupMemoryHierachyMount, "testmemorylimit"), 0755)
+		if err != nil {
+			return
+		}
 		//将容器进程写入到cgroup中
-		os.WriteFile(path.Join(cgroupMemoryHierachyMount, "testmemorylimit", "tasks"), []byte(strconv.Itoa(cmd.Process.Pid)), 0644)
+		err = os.WriteFile(path.Join(cgroupMemoryHierachyMount, "testmemorylimit", "tasks"), []byte(strconv.Itoa(cmd.Process.Pid)), 0644)
+		if err != nil {
+			return
+		}
 		//限制cgroup进程占用
-		os.WriteFile(path.Join(cgroupMemoryHierachyMount, "testmemorylimit", "memory.limit_in_bytes"), []byte("100m"), 0644)
+		err = os.WriteFile(path.Join(cgroupMemoryHierachyMount, "testmemorylimit", "memory.limit_in_bytes"), []byte("100m"), 0644)
+		if err != nil {
+			return
+		}
 	}
 	//等待命令执行完毕
-	cmd.Wait()
+	err := cmd.Wait()
+	if err != nil {
+		return
+	}
 }

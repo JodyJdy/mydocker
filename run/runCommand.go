@@ -13,26 +13,42 @@ import (
 	"syscall"
 )
 
-func Run(tty bool, cmdArray []string, res *cgroups.ResourceConfig) {
-	parent, writePipe := containers.NewParentProcess(tty)
+func Run(tty bool, cmdArray []string, res *cgroups.ResourceConfig, volume string) {
+	parent, writePipe, containerBaseUrl := containers.NewParentProcess(tty, volume)
 	if parent == nil {
 		log.Println("New parent process error")
 		return
 	}
 	if err := parent.Start(); err != nil {
-		log.Println(err)
+		fmt.Errorf("启动父进程失败:%v\n", err)
 	}
 	// 创建cgroup manager
 	cgroupManager := cgroups.NewCgroupManager("mydocker-cgroup")
 	defer cgroupManager.Remove()
 	//设置资源限制
-	cgroupManager.Set(res)
+	err := cgroupManager.Set(res)
+	if err != nil {
+		_ = fmt.Errorf("设置资源限制失败: %v \n", err)
+		return
+	}
 	//将容器进程加入到cgroup中
-	cgroupManager.Apply(parent.Process.Pid)
+	err = cgroupManager.Apply(parent.Process.Pid)
+	if err != nil {
+		_ = fmt.Errorf("添加容器进程到cgroup中失败: %v \n", err)
+		return
+	}
 	// 将命令写到管道里面
 	sendInitCommand(cmdArray, writePipe)
 	// 等待parent进程执行完毕
-	parent.Wait()
+	err = parent.Wait()
+	if err != nil {
+		_ = fmt.Errorf("等待父进程执行失败： %v", err)
+		return
+	}
+	if tty {
+		// 删除工作空间，卷的挂载点
+		containers.DeleteWorkSpace(containerBaseUrl, volume)
+	}
 	os.Exit(-1)
 }
 
@@ -53,6 +69,7 @@ func sendInitCommand(comArray []string, writePipe *os.File) {
 // RunContainerInitProcess 执行容器内的进程
 func RunContainerInitProcess() error {
 	cmdArray := readUserCommand()
+	fmt.Printf("命令行是:%v\n", cmdArray)
 	if cmdArray == nil || len(cmdArray) == 0 {
 		return fmt.Errorf("run container get user command error, cmdArray is nil")
 	}
@@ -90,11 +107,12 @@ func setUpMount() {
 	//获取工作目录
 	pwd, err := os.Getwd()
 	if err != nil {
-		fmt.Printf("获取当前工作目录失败：%v \n", err)
+		_ = fmt.Errorf("获取当前工作目录失败：%v \n", err)
 	}
 	//挂载root目录
 	err = pivotRoot(pwd)
 	if err != nil {
+		_ = fmt.Errorf("挂载root目录失败: %v \n ", err)
 		return
 	}
 
@@ -102,9 +120,17 @@ func setUpMount() {
 	// 不允许 set-user-id,set-group-id
 	defaultMountFlags := syscall.MS_NOEXEC | syscall.MS_NOSUID | syscall.MS_NODEV
 	// 挂载 proc目录，使 容器有独立的proc目录
-	syscall.Mount("proc", "/proc", "proc", uintptr(defaultMountFlags), "")
+	err = syscall.Mount("proc", "/proc", "proc", uintptr(defaultMountFlags), "")
+	if err != nil {
+		_ = fmt.Errorf("挂载 /proc 目录 失败: %v \n", err)
+		return
+	}
 	//挂载 /dev 目录
-	syscall.Mount("tmpfs", "/dev", "tmpfs", syscall.MS_NOSUID|syscall.MS_STRICTATIME, "mode=755")
+	err = syscall.Mount("tmpfs", "/dev", "tmpfs", syscall.MS_NOSUID|syscall.MS_STRICTATIME, "mode=755")
+	if err != nil {
+		_ = fmt.Errorf("挂载 /dev 目录 失败: %v \n", err)
+		return
+	}
 
 }
 
@@ -113,7 +139,7 @@ func pivotRoot(containerRoot string) error {
 	//使得 cotainerRoot的文件系统和 宿主机的文件系统不同
 	//这是 pivot_root的必须要求
 	if err := syscall.Mount(containerRoot, containerRoot, "bind", syscall.MS_BIND|syscall.MS_REC, ""); err != nil {
-		return fmt.Errorf("Mount rootfs to itself error: %v", err)
+		return fmt.Errorf("mount rootfs to itself error: %v", err)
 	}
 	// 创建 cotainerRoot/.pivot_root 存储 old_root
 	pivotDir := filepath.Join(containerRoot, ".pivot_root")

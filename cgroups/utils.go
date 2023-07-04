@@ -14,7 +14,12 @@ func FindCgroupMountPoint(subsystem string) string {
 	if err != nil {
 		return ""
 	}
-	defer f.Close()
+	defer func(f *os.File) {
+		err := f.Close()
+		if err != nil {
+			_ = fmt.Errorf("关闭文件失败: %s", f.Name())
+		}
+	}(f)
 	scanner := bufio.NewScanner(f)
 	// 挂载信息格式如下
 	// 34 25 0:30 / /sys/fs/cgroup/memory rw,nosuid,nodev,noexec,relatime shared:16 - cgroup cgroup rw,memory
