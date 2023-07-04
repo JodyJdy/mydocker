@@ -20,7 +20,7 @@ func StartCommands() {
 	}
 }
 
-// docker run 命令
+// RunCommand docker run 命令
 var RunCommand = cli.Command{
 	Name: "run",
 	Usage: ` Create a containers with namespace and cgroups limit mydocker run -ti  [command]
@@ -65,7 +65,7 @@ var RunCommand = cli.Command{
 	},
 }
 
-// 定义 init 命令，这是内部命令
+// InitCommand 定义 init 命令，这是内部命令
 var InitCommand = cli.Command{
 	Name: "init",
 	Usage: `Init containers process run user's process in containers. Do not call it outside 
@@ -82,7 +82,10 @@ var InitCommand = cli.Command{
 		// 获取命令
 		cmd := context.Args().Get(0)
 		log.Println("command is :", cmd)
-		run.RunContainerInitProcess()
+		err := run.RunContainerInitProcess()
+		if err != nil {
+			return err
+		}
 		return nil
 	},
 }

@@ -12,7 +12,7 @@ import (
 func NewParentProcess(tty bool) (*exec.Cmd, *os.File) {
 	readPipe, writePipe, err := NewPipe()
 	if err != nil {
-		fmt.Errorf("New pipe error %v", err)
+		_ = fmt.Errorf("new pipe error %v", err)
 		return nil, nil
 	}
 	// 调用mydocker的 init命令， 执行command
@@ -28,8 +28,11 @@ func NewParentProcess(tty bool) (*exec.Cmd, *os.File) {
 	}
 	// 用于读取 管道中的命令
 	cmd.ExtraFiles = []*os.File{readPipe}
-	// 临时的设置工作目录为 /root/busybox， 里面放了 busybox 的根文件系统@todo 后面进行替换
-	cmd.Dir = "/root/busybox"
+	// 容器工作目录， @todo 应该每个容器一个目录
+	containerBaseUrl := "/root/"
+	// 工作目录，为 overlay文件系统中的 merge目录
+	// 容器进程，会以merged目录作为根目录运行
+	cmd.Dir = NewWorkSpace(containerBaseUrl)
 	return cmd, writePipe
 }
 

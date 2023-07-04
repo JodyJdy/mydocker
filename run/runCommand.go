@@ -39,24 +39,30 @@ func Run(tty bool, cmdArray []string, res *cgroups.ResourceConfig) {
 // 将命令行信息写入到管道文件里面
 func sendInitCommand(comArray []string, writePipe *os.File) {
 	command := strings.Join(comArray, " ")
-	fmt.Println("command all is %s", command)
-	writePipe.WriteString(command)
-	writePipe.Close()
+	fmt.Printf("command all is %s\n", command)
+	_, err := writePipe.WriteString(command)
+	if err != nil {
+		return
+	}
+	err = writePipe.Close()
+	if err != nil {
+		return
+	}
 }
 
 // RunContainerInitProcess 执行容器内的进程
 func RunContainerInitProcess() error {
 	cmdArray := readUserCommand()
 	if cmdArray == nil || len(cmdArray) == 0 {
-		return fmt.Errorf("Run container get user command error, cmdArray is nil")
+		return fmt.Errorf("run container get user command error, cmdArray is nil")
 	}
 	setUpMount()
 	path, err := exec.LookPath(cmdArray[0])
 	if err != nil {
-		fmt.Println("Exec loop path error %v", err)
+		fmt.Printf("Exec loop path error %v\n", err)
 		return err
 	}
-	fmt.Println("Find path %s", path)
+	fmt.Printf("Find path %s\n", path)
 	// 当前处于父进程中， exec 会执行cmd，将cmd对应的进程代替父进程
 	//也就是说容器中 pid =1的进程会是 cmd对应的进程
 	if err := syscall.Exec(path, cmdArray[0:], os.Environ()); err != nil {
@@ -72,7 +78,7 @@ func readUserCommand() []string {
 	pipe := os.NewFile(uintptr(3), "pipe")
 	msg, err := io.ReadAll(pipe)
 	if err != nil {
-		fmt.Println("init read pipe error %v", err)
+		fmt.Printf("init read pipe error %v\n", err)
 		return nil
 	}
 	msgStr := string(msg)
@@ -87,7 +93,10 @@ func setUpMount() {
 		fmt.Printf("获取当前工作目录失败：%v \n", err)
 	}
 	//挂载root目录
-	pivotRoot(pwd)
+	err = pivotRoot(pwd)
+	if err != nil {
+		return
+	}
 
 	//设置默认挂载参数 MS_NOEXEC本文将系统不允许运行其他程序 MS_NOEXEC 运行程序的时候
 	// 不允许 set-user-id,set-group-id
