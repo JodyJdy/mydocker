@@ -12,11 +12,12 @@ type ContainerInfo struct {
 // 定义目录相关的常量，存放信息
 
 var (
-	Running string = "running"
-	Stop    string = "stoped"
-	Exit    string = "exited"
+	Running = "running"
+	Stop    = "stoped"
+	Exit    = "exited"
 	// DefaultInfoLocation %s 是容器的标识
-	DefaultInfoLocation  string = "/var/run/mydocker/containers/%s/"
-	AllContainerLocation string = "/var/run/mydocker/containers/"
-	ConfigName           string = "config.json"
+	DefaultInfoLocation  = "/var/run/mydocker/containers/%s/"
+	AllContainerLocation = "/var/run/mydocker/containers/"
+	ConfigName           = "config.json"
+	ContainerLogName     = "container.log"
 )

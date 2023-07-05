@@ -15,6 +15,8 @@ import (
 // NewParentProcess 创建一个父进程， 父进程的目的是
 // 真正的执行cmd，并用cmd 对应的进程替换自身
 func NewParentProcess(containerId string, tty bool, volume string) (*exec.Cmd, *os.File, string) {
+	// 容器工作目录 /var/run/mydocker/containers/容器id/
+	containerBaseUrl := fmt.Sprintf(DefaultInfoLocation, containerId)
 	readPipe, writePipe, err := NewPipe()
 	if err != nil {
 		_ = fmt.Errorf("new pipe error %v", err)
@@ -30,13 +32,24 @@ func NewParentProcess(containerId string, tty bool, volume string) (*exec.Cmd, *
 		cmd.Stdin = os.Stdin
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
+	} else {
+		// 生产容器对应目录的container.log文件
+		if err := os.MkdirAll(containerBaseUrl, 0622); err != nil {
+			fmt.Printf("创建目录 %s 失败 %v", containerBaseUrl, err)
+			return nil, nil, ""
+		}
+		logFilePath := containerBaseUrl + ContainerLogName
+		logFile, err := os.Create(logFilePath)
+		if err != nil {
+			fmt.Printf("创建日志文件 %s 失败 %v", logFilePath, err)
+			return nil, nil, ""
+		}
+		// 将进程的输出重定向到logFile中，访问这个文件，就能读取到日志
+		cmd.Stdout = logFile
 	}
 	// 用于读取 管道中的命令
 	cmd.ExtraFiles = []*os.File{readPipe}
-	// 容器工作目录 /var/run/mydocker/containers/容器id/
-	containerBaseUrl := fmt.Sprintf(DefaultInfoLocation, containerId)
-	// 工作目录，为 overlay文件系统中的 merge目录
-	// 容器进程，会以merged目录作为根目录运行
+	// 工作目录，为 overlay文件系统中的 merge目录 ,容器进程，会以merged目录作为根目录运行
 	cmd.Dir = NewWorkSpace(containerBaseUrl, volume)
 	return cmd, writePipe, containerBaseUrl
 }

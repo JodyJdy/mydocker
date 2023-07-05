@@ -13,7 +13,7 @@ func StartCommands() {
 	app := cli.NewApp()
 	app.Name = "mydocker"
 	app.Usage = "mydocker is a simple container runtime implementation"
-	app.Commands = []cli.Command{RunCommand, InitCommand, CommitCommand, PsCommand}
+	app.Commands = []cli.Command{RunCommand, InitCommand, CommitCommand, PsCommand, LogCommand}
 	err := app.Run(os.Args)
 	if err != nil {
 		log.Fatalln(err)
@@ -128,6 +128,18 @@ var PsCommand = cli.Command{
 	Usage: "列出所有容器",
 	Action: func(context *cli.Context) error {
 		run.Ps()
+		return nil
+	},
+}
+
+var LogCommand = cli.Command{
+	Name:  "logs",
+	Usage: "打印容器日志",
+	Action: func(context *cli.Context) error {
+		if len(context.Args()) < 1 {
+			return fmt.Errorf("缺少容器名称")
+		}
+		run.Log(context.Args()[0])
 		return nil
 	},
 }

@@ -108,6 +108,25 @@ func readUserCommand() []string {
 	return strings.Split(msgStr, " ")
 }
 
+// Ps 列出所有进程
 func Ps() {
 	containers.ListContainerInfo()
+}
+
+// Log 显示container的日志，先按照容器id打开
+func Log(containerId string) {
+	dirURL := fmt.Sprintf(containers.DefaultInfoLocation, containerId)
+	logFileLocation := dirURL + containers.ContainerLogName
+	file, err := os.Open(logFileLocation)
+	defer file.Close()
+	if err != nil {
+		fmt.Errorf("log container open file %s error %v", logFileLocation, err)
+		return
+	}
+	content, err := io.ReadAll(file)
+	if err != nil {
+		fmt.Errorf("log container read file %s error %v", logFileLocation, err)
+		return
+	}
+	fmt.Fprint(os.Stdout, string(content))
 }
