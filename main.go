@@ -1,6 +1,8 @@
 package main
 
-import "commandline"
+import (
+	"commandline"
+)
 
 func main() {
 	commandline.StartCommands()

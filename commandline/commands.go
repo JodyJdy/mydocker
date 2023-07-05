@@ -151,11 +151,11 @@ var ExecCommand = cli.Command{
 	Action: func(context *cli.Context) error {
 		// 说明当前是fork的进程，环境变量以及设置好， c语言的代码也已经执行了
 		if os.Getenv(containers.ENV_EXEC_PID) != "" {
-			fmt.Printf("pid callback pid %s\n", os.Getppid())
+			fmt.Printf("pid callback pid %d\n", os.Getpid())
 			return nil
 		}
 		if len(context.Args()) < 2 {
-			return fmt.Errorf("缺少容器id或者执行命令")
+			return fmt.Errorf("缺少容器id或者执行命令\n")
 		}
 		containerId := context.Args()[0]
 		//获取执行的命令

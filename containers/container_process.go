@@ -189,7 +189,7 @@ func ExecContainer(containerId string, cmdArray []string) {
 	pid := GetContainerPid(containerId)
 	//拼接命令行
 	cmdStr := strings.Join(cmdArray, " ")
-	fmt.Printf("容器进程ids是 %s, 执行命令是 %s", pid, cmdStr)
+	fmt.Printf("容器进程pid是%s,执行命令%s \n", pid, cmdStr)
 	//再次调用自身
 	cmd := exec.Command("/proc/self/exe", "exec")
 	cmd.Stdin = os.Stdin
@@ -197,8 +197,16 @@ func ExecContainer(containerId string, cmdArray []string) {
 	cmd.Stderr = os.Stderr
 
 	//设置环境变量， 用于 c 相关的代码判断是否执行，以及作为c执行的参数
-	os.Setenv(ENV_EXEC_PID, pid)
-	os.Setenv(ENV_EXEC_CMD, cmdStr)
+	err := os.Setenv(ENV_EXEC_PID, pid)
+	if err != nil {
+		fmt.Println("设置环境变量失败")
+		return
+	}
+	err = os.Setenv(ENV_EXEC_CMD, cmdStr)
+	if err != nil {
+		fmt.Println("设置环境变量失败")
+		return
+	}
 	if err := cmd.Run(); err != nil {
 		fmt.Printf("exec contaienr %s error", containerId, err)
 	}
