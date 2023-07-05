@@ -13,7 +13,7 @@ func StartCommands() {
 	app := cli.NewApp()
 	app.Name = "mydocker"
 	app.Usage = "mydocker is a simple container runtime implementation"
-	app.Commands = []cli.Command{RunCommand, InitCommand, CommitCommand}
+	app.Commands = []cli.Command{RunCommand, InitCommand, CommitCommand, PsCommand}
 	err := app.Run(os.Args)
 	if err != nil {
 		log.Fatalln(err)
@@ -50,6 +50,10 @@ var RunCommand = cli.Command{
 			Name:  "d",
 			Usage: "detach container",
 		},
+		cli.StringFlag{
+			Name:  "name",
+			Usage: "container name",
+		},
 	},
 	// 具体的执行命令
 	Action: func(context *cli.Context) error {
@@ -75,7 +79,9 @@ var RunCommand = cli.Command{
 		}
 		// 获取卷挂载参数
 		volume := context.String("v")
-		run.Run(tty, cmdArray, res, volume)
+		// 获取容器名称
+		containerName := context.String("name")
+		run.Run(tty, cmdArray, res, volume, containerName)
 		return nil
 	},
 }
@@ -113,6 +119,15 @@ var CommitCommand = cli.Command{
 		containerName := context.Args().Get(0)
 		imageName := context.Args().Get(1)
 		fmt.Println(containerName, imageName)
+		return nil
+	},
+}
+
+var PsCommand = cli.Command{
+	Name:  "ps",
+	Usage: "列出所有容器",
+	Action: func(context *cli.Context) error {
+		run.Ps()
 		return nil
 	},
 }

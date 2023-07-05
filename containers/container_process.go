@@ -1,10 +1,15 @@
 package containers
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
+	"strconv"
+	"strings"
 	"syscall"
+	"text/tabwriter"
+	"time"
 )
 
 // NewParentProcess 创建一个父进程， 父进程的目的是
@@ -44,4 +49,109 @@ func NewPipe() (*os.File, *os.File, error) {
 		return nil, nil, err
 	}
 	return read, write, nil
+}
+
+// RecordContainerInfo 记录容器信息
+func RecordContainerInfo(containerPID int, cmdArray []string, containerName string) (string, error) {
+	// 生成容器id
+	id := ContainerId()
+	//获取容器创建时间
+	createTime := time.Now().Format("2006-01-02 15:04:05")
+	// 调整容器名称，用户不传时的默认值
+	if containerName == "" {
+		containerName = id
+	}
+	containerInfo := &ContainerInfo{
+		Id:         id,
+		CreateTime: createTime,
+		Pid:        strconv.Itoa(containerPID),
+		Command:    strings.Join(cmdArray, ""),
+		Status:     Running,
+		Name:       containerName,
+	}
+	// 序列化为字符串
+	jsonBytes, err := json.Marshal(containerInfo)
+	if err != nil {
+		fmt.Printf("记录容器信息失败: %v", err)
+		return "", err
+	}
+	jsonStr := string(jsonBytes)
+	// 容器信息记录的路径
+	dirUrl := fmt.Sprintf(DefaultInfoLocation, id)
+	// 尝试创建路径
+	if err := os.MkdirAll(dirUrl, 0622); err != nil {
+		fmt.Printf("创建路径%s 失败: %v", dirUrl, err)
+		return "", err
+	}
+	fileName := dirUrl + ConfigName
+	// 创建文件
+	file, err := os.Create(fileName)
+	defer file.Close()
+	if err != nil {
+		fmt.Printf("创建文件失败%s 失败: %v", fileName, err)
+	}
+	if _, err := file.WriteString(jsonStr); err != nil {
+		fmt.Printf("写入容器信息失败: %v", err)
+		return "", err
+	}
+	return id, nil
+}
+
+// DeleteContainerInfo 删除容器信息
+func DeleteContainerInfo(containerId string) {
+	dirUrl := fmt.Sprintf(DefaultInfoLocation, containerId)
+	if err := os.RemoveAll(dirUrl); err != nil {
+		fmt.Printf("删除目录：%s失败 %v", dirUrl, err)
+	}
+}
+
+func ListContainerInfo() {
+	// 返回所有容器的目录
+	containerDirs, err := os.ReadDir(AllContainerLocation)
+	if err != nil {
+		fmt.Errorf("read dir %s error %v", AllContainerLocation, err)
+		return
+	}
+	// 记录所有容器的对象
+	var containers []*ContainerInfo
+	for _, containerDir := range containerDirs {
+		tmpContainer, err := ReadContainerInfo(containerDir)
+		if err != nil {
+			fmt.Errorf("Get container info error %v", err)
+			continue
+		}
+		containers = append(containers, tmpContainer)
+	}
+	// 格式化并输出
+	w := tabwriter.NewWriter(os.Stdout, 12, 1, 3, ' ', 0)
+	fmt.Fprint(w, "ID\tNAME\tPID\tSTATUS\tCOMMAND\tCREATED\n")
+	for _, item := range containers {
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n",
+			item.Id,
+			item.Name,
+			item.Pid,
+			item.Status,
+			item.Command,
+			item.CreateTime)
+	}
+	if err := w.Flush(); err != nil {
+		fmt.Errorf("Flush error %v", err)
+		return
+	}
+}
+func ReadContainerInfo(containerDir os.DirEntry) (*ContainerInfo, error) {
+	dir := fmt.Sprintf(DefaultInfoLocation, containerDir.Name())
+	dirContents, _ := os.ReadDir(dir)
+	containerInfoFile := dir + dirContents[0].Name()
+	content, err := os.ReadFile(containerInfoFile)
+	if err != nil {
+		fmt.Errorf("read containerDir %s error %v", containerInfoFile, err)
+		return nil, err
+	}
+	var containerInfo ContainerInfo
+	if err := json.Unmarshal(content, &containerInfo); err != nil {
+		fmt.Errorf("json unmarshal error %v", err)
+		return nil, err
+	}
+	return &containerInfo, nil
 }
