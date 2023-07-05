@@ -130,3 +130,8 @@ func Log(containerId string) {
 	}
 	fmt.Fprint(os.Stdout, string(content))
 }
+
+// Exec 进入容器
+func Exec(containerId string, cmdArray []string) {
+	containers.ExecContainer(containerId, cmdArray)
+}

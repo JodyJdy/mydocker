@@ -2,6 +2,7 @@ package commandline
 
 import (
 	"cgroups"
+	"containers"
 	"fmt"
 	"github.com/urfave/cli"
 	"log"
@@ -13,7 +14,7 @@ func StartCommands() {
 	app := cli.NewApp()
 	app.Name = "mydocker"
 	app.Usage = "mydocker is a simple container runtime implementation"
-	app.Commands = []cli.Command{RunCommand, InitCommand, CommitCommand, PsCommand, LogCommand}
+	app.Commands = []cli.Command{RunCommand, InitCommand, CommitCommand, PsCommand, LogCommand, ExecCommand}
 	err := app.Run(os.Args)
 	if err != nil {
 		log.Fatalln(err)
@@ -140,6 +141,31 @@ var LogCommand = cli.Command{
 			return fmt.Errorf("缺少容器名称")
 		}
 		run.Log(context.Args()[0])
+		return nil
+	},
+}
+
+var ExecCommand = cli.Command{
+	Name:  "exec",
+	Usage: "在容器中执行命令",
+	Action: func(context *cli.Context) error {
+		// 说明当前是fork的进程，环境变量以及设置好， c语言的代码也已经执行了
+		if os.Getenv(containers.ENV_EXEC_PID) != "" {
+			fmt.Printf("pid callback pid %s\n", os.Getppid())
+			return nil
+		}
+		if len(context.Args()) < 2 {
+			return fmt.Errorf("缺少容器id或者执行命令")
+		}
+		containerId := context.Args()[0]
+		//获取执行的命令
+		var commandArray []string
+		// tail函数或获取除第一个参数以外的参数
+		for _, arg := range context.Args().Tail() {
+			commandArray = append(commandArray, arg)
+		}
+		//执行命令
+		run.Exec(containerId, commandArray)
 		return nil
 	},
 }

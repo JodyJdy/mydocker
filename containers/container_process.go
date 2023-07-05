@@ -149,8 +149,7 @@ func ListContainerInfo() {
 }
 func ReadContainerInfo(containerDir os.DirEntry) (*ContainerInfo, error) {
 	dir := fmt.Sprintf(DefaultInfoLocation, containerDir.Name())
-	dirContents, _ := os.ReadDir(dir)
-	containerInfoFile := dir + dirContents[0].Name()
+	containerInfoFile := dir + ConfigName
 	content, err := os.ReadFile(containerInfoFile)
 	if err != nil {
 		fmt.Errorf("read containerDir %s error %v", containerInfoFile, err)
@@ -162,4 +161,45 @@ func ReadContainerInfo(containerDir os.DirEntry) (*ContainerInfo, error) {
 		return nil, err
 	}
 	return &containerInfo, nil
+}
+func GetContainerInfo(containerId string) (*ContainerInfo, error) {
+	dir := fmt.Sprintf(DefaultInfoLocation, containerId)
+	containerInfoFile := dir + ConfigName
+	content, err := os.ReadFile(containerInfoFile)
+	if err != nil {
+		fmt.Errorf("read containerDir %s error %v", containerInfoFile, err)
+		return nil, err
+	}
+	var containerInfo ContainerInfo
+	if err := json.Unmarshal(content, &containerInfo); err != nil {
+		fmt.Errorf("json unmarshal error %v", err)
+		return nil, err
+	}
+	return &containerInfo, nil
+}
+func GetContainerPid(containerId string) string {
+	info, _ := GetContainerInfo(containerId)
+	return info.Pid
+}
+
+const ENV_EXEC_PID = "mydocker_pid"
+const ENV_EXEC_CMD = "mydocker_cmd"
+
+func ExecContainer(containerId string, cmdArray []string) {
+	pid := GetContainerPid(containerId)
+	//拼接命令行
+	cmdStr := strings.Join(cmdArray, " ")
+	fmt.Printf("容器进程ids是 %s, 执行命令是 %s", pid, cmdStr)
+	//再次调用自身
+	cmd := exec.Command("/proc/self/exe", "exec")
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	//设置环境变量， 用于 c 相关的代码判断是否执行，以及作为c执行的参数
+	os.Setenv(ENV_EXEC_PID, pid)
+	os.Setenv(ENV_EXEC_CMD, cmdStr)
+	if err := cmd.Run(); err != nil {
+		fmt.Printf("exec contaienr %s error", containerId, err)
+	}
 }
