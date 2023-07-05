@@ -6,5 +6,6 @@ use (
 	./containers
 	./run
 	./cgroups
+	./nsenter
 	.
 )

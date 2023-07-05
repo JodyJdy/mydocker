@@ -9,9 +9,8 @@ package nsenter
 #include <stdlib.h>
 #include <string.h>
 #include <fcntl.h>
-
-// 这段代码只要启动进程就会执行，通过环境变量判断是否应该执行
-__attribute__((constructor)) void enter_namespace(void) {
+// 原先的写法，并不会生效，采用手动执行的方式进入命名空间
+static void enter_namespace(void) {
 	char *mydocker_pid;
 	mydocker_pid = getenv("mydocker_pid");
 	if (mydocker_pid) {
@@ -49,3 +48,7 @@ __attribute__((constructor)) void enter_namespace(void) {
 }
 */
 import "C"
+
+func CallC() {
+	C.enter_namespace()
+}

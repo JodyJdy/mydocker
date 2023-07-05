@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/urfave/cli"
 	"log"
+	"nsenter"
 	"os"
 	"run"
 )
@@ -152,6 +153,7 @@ var ExecCommand = cli.Command{
 		// 说明当前是fork的进程，环境变量以及设置好， c语言的代码也已经执行了
 		if os.Getenv(containers.ENV_EXEC_PID) != "" {
 			fmt.Printf("pid callback pid %d\n", os.Getpid())
+			nsenter.CallC()
 			return nil
 		}
 		if len(context.Args()) < 2 {
