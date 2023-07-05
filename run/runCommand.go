@@ -12,10 +12,10 @@ import (
 	"syscall"
 )
 
-func Run(tty bool, cmdArray []string, res *cgroups.ResourceConfig, volume string, containerName string) {
+func Run(tty bool, cmdArray []string, res *cgroups.ResourceConfig, volume string, containerName string, env []string) {
 	// 提前获取容器id
 	containerId := containers.ContainerId()
-	parent, writePipe, containerBaseUrl := containers.NewParentProcess(containerId, tty, volume)
+	parent, writePipe, containerBaseUrl := containers.NewParentProcess(containerId, tty, volume, env)
 	if parent == nil {
 		log.Println("New parent process error")
 		return

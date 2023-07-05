@@ -3,6 +3,7 @@ package containers
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"strconv"
@@ -14,7 +15,7 @@ import (
 
 // NewParentProcess 创建一个父进程， 父进程的目的是
 // 真正的执行cmd，并用cmd 对应的进程替换自身
-func NewParentProcess(containerId string, tty bool, volume string) (*exec.Cmd, *os.File, string) {
+func NewParentProcess(containerId string, tty bool, volume string, env []string) (*exec.Cmd, *os.File, string) {
 	// 容器工作目录 /var/run/mydocker/containers/容器id/
 	containerBaseUrl := fmt.Sprintf(DefaultInfoLocation, containerId)
 	readPipe, writePipe, err := NewPipe()
@@ -49,8 +50,11 @@ func NewParentProcess(containerId string, tty bool, volume string) (*exec.Cmd, *
 	}
 	// 用于读取 管道中的命令
 	cmd.ExtraFiles = []*os.File{readPipe}
+	// 设置环境变量
+	cmd.Env = append(os.Environ(), env...)
 	// 工作目录，为 overlay文件系统中的 merge目录 ,容器进程，会以merged目录作为根目录运行
 	cmd.Dir = NewWorkSpace(containerBaseUrl, volume)
+
 	return cmd, writePipe, containerBaseUrl
 }
 
@@ -213,9 +217,25 @@ func ExecContainer(containerId string, cmdArray []string) {
 		fmt.Println("设置环境变量失败")
 		return
 	}
+	// 添加要attach的进程的环境变量到自身
+	containerEnvs := getEnvsByPid(pid)
+	cmd.Env = append(os.Environ(), containerEnvs...)
 	if err := cmd.Run(); err != nil {
-		fmt.Printf("exec contaienr %s error", containerId, err)
+		fmt.Printf("exec contaienr %s error %v \n", containerId, err)
 	}
+}
+
+// 获取进程环境变量
+func getEnvsByPid(pid string) []string {
+	path := fmt.Sprintf("/proc/%s/environ", pid)
+	contentBytes, err := ioutil.ReadFile(path)
+	if err != nil {
+		_ = fmt.Errorf("read file %s error %v\n", path, err)
+		return nil
+	}
+	//env split by \u0000
+	envs := strings.Split(string(contentBytes), "\u0000")
+	return envs
 }
 
 func StopContainer(containerId string) {

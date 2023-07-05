@@ -57,6 +57,11 @@ var RunCommand = cli.Command{
 			Name:  "name",
 			Usage: "container name",
 		},
+
+		cli.StringSliceFlag{
+			Name:  "e",
+			Usage: "set environment",
+		},
 	},
 	// 具体的执行命令
 	Action: func(context *cli.Context) error {
@@ -84,7 +89,9 @@ var RunCommand = cli.Command{
 		volume := context.String("v")
 		// 获取容器名称
 		containerName := context.String("name")
-		run.Run(tty, cmdArray, res, volume, containerName)
+		//获取容器名称
+		envSlice := context.StringSlice("e")
+		run.Run(tty, cmdArray, res, volume, containerName, envSlice)
 		return nil
 	},
 }
