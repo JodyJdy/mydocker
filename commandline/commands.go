@@ -13,7 +13,7 @@ func StartCommands() {
 	app := cli.NewApp()
 	app.Name = "mydocker"
 	app.Usage = "mydocker is a simple container runtime implementation"
-	app.Commands = []cli.Command{RunCommand, InitCommand}
+	app.Commands = []cli.Command{RunCommand, InitCommand, CommitCommand}
 	err := app.Run(os.Args)
 	if err != nil {
 		log.Fatalln(err)
@@ -46,6 +46,10 @@ var RunCommand = cli.Command{
 			Name:  "v",
 			Usage: "volume",
 		},
+		cli.BoolFlag{
+			Name:  "d",
+			Usage: "detach container",
+		},
 	},
 	// 具体的执行命令
 	Action: func(context *cli.Context) error {
@@ -59,6 +63,11 @@ var RunCommand = cli.Command{
 		}
 		// 获取tty参数
 		tty := context.Bool("ti")
+		// 获取 detach 参数
+		detach := context.Bool("d")
+		if tty && detach {
+			return fmt.Errorf("ti 和 d 不能同时使用")
+		}
 		res := &cgroups.ResourceConfig{
 			MemoryLimit: context.String("m"),
 			CpuSet:      context.String("cpuset"),
@@ -89,6 +98,21 @@ var InitCommand = cli.Command{
 		if err != nil {
 			return err
 		}
+		return nil
+	},
+}
+
+// CommitCommand 镜像提交命令 @Todo 打包镜像先不做
+var CommitCommand = cli.Command{
+	Name:  "commit",
+	Usage: "commit a container into image",
+	Action: func(context *cli.Context) error {
+		if len(context.Args()) < 2 {
+			return fmt.Errorf("缺少容器名称和镜像名称")
+		}
+		containerName := context.Args().Get(0)
+		imageName := context.Args().Get(1)
+		fmt.Println(containerName, imageName)
 		return nil
 	},
 }

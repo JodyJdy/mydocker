@@ -39,13 +39,13 @@ func Run(tty bool, cmdArray []string, res *cgroups.ResourceConfig, volume string
 	}
 	// 将命令写到管道里面
 	sendInitCommand(cmdArray, writePipe)
-	// 等待parent进程执行完毕
-	err = parent.Wait()
-	if err != nil {
-		_ = fmt.Errorf("等待父进程执行失败： %v", err)
-		return
-	}
 	if tty {
+		// 等待parent进程执行完毕
+		err = parent.Wait()
+		if err != nil {
+			_ = fmt.Errorf("等待父进程执行失败： %v", err)
+			return
+		}
 		// 删除工作空间，卷的挂载点
 		containers.DeleteWorkSpace(containerBaseUrl, volume)
 	}
