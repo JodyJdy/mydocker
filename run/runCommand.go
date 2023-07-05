@@ -13,7 +13,9 @@ import (
 )
 
 func Run(tty bool, cmdArray []string, res *cgroups.ResourceConfig, volume string, containerName string) {
-	parent, writePipe, containerBaseUrl := containers.NewParentProcess(tty, volume)
+	// 提前获取容器id
+	containerId := containers.ContainerId()
+	parent, writePipe, containerBaseUrl := containers.NewParentProcess(containerId, tty, volume)
 	if parent == nil {
 		log.Println("New parent process error")
 		return
@@ -22,7 +24,7 @@ func Run(tty bool, cmdArray []string, res *cgroups.ResourceConfig, volume string
 		fmt.Errorf("启动父进程失败:%v\n", err)
 	}
 	// 记录容器信息
-	containerId, _ := containers.RecordContainerInfo(parent.Process.Pid, cmdArray, containerName)
+	containers.RecordContainerInfo(containerId, parent.Process.Pid, cmdArray, containerName)
 	// 创建cgroup manager
 	cgroupManager := cgroups.NewCgroupManager("mydocker-cgroup")
 	defer cgroupManager.Remove()

@@ -25,8 +25,8 @@ func NewWorkSpace(containerBaseUrl, volume string) string {
 // 创建只读层
 func createLowerDir(containerBaseUrl string) error {
 	lowerDir := containerBaseUrl + "lower/"
-	busyboxTarUrl := containerBaseUrl + "busybox.tar"
-
+	// busybox.tar @TODO 这里用于处理镜像，现在使用的是默认的镜像
+	busyboxTarUrl := "/root/busybox.tar"
 	exist, err := PathExists(lowerDir)
 	if err != nil {
 		fmt.Printf("Fail to judge whether dir %s exists. %v \n", lowerDir, err)

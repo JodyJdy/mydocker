@@ -14,7 +14,7 @@ import (
 
 // NewParentProcess 创建一个父进程， 父进程的目的是
 // 真正的执行cmd，并用cmd 对应的进程替换自身
-func NewParentProcess(tty bool, volume string) (*exec.Cmd, *os.File, string) {
+func NewParentProcess(containerId string, tty bool, volume string) (*exec.Cmd, *os.File, string) {
 	readPipe, writePipe, err := NewPipe()
 	if err != nil {
 		_ = fmt.Errorf("new pipe error %v", err)
@@ -33,12 +33,11 @@ func NewParentProcess(tty bool, volume string) (*exec.Cmd, *os.File, string) {
 	}
 	// 用于读取 管道中的命令
 	cmd.ExtraFiles = []*os.File{readPipe}
-	// 容器工作目录， @todo 应该每个容器一个目录
-	containerBaseUrl := "/root/"
+	// 容器工作目录 /var/run/mydocker/containers/容器id/
+	containerBaseUrl := fmt.Sprintf(DefaultInfoLocation, containerId)
 	// 工作目录，为 overlay文件系统中的 merge目录
 	// 容器进程，会以merged目录作为根目录运行
 	cmd.Dir = NewWorkSpace(containerBaseUrl, volume)
-	fmt.Println(cmd.Dir)
 	return cmd, writePipe, containerBaseUrl
 }
 
@@ -52,9 +51,7 @@ func NewPipe() (*os.File, *os.File, error) {
 }
 
 // RecordContainerInfo 记录容器信息
-func RecordContainerInfo(containerPID int, cmdArray []string, containerName string) (string, error) {
-	// 生成容器id
-	id := ContainerId()
+func RecordContainerInfo(id string, containerPID int, cmdArray []string, containerName string) {
 	//获取容器创建时间
 	createTime := time.Now().Format("2006-01-02 15:04:05")
 	// 调整容器名称，用户不传时的默认值
@@ -73,7 +70,7 @@ func RecordContainerInfo(containerPID int, cmdArray []string, containerName stri
 	jsonBytes, err := json.Marshal(containerInfo)
 	if err != nil {
 		fmt.Printf("记录容器信息失败: %v", err)
-		return "", err
+		return
 	}
 	jsonStr := string(jsonBytes)
 	// 容器信息记录的路径
@@ -81,7 +78,6 @@ func RecordContainerInfo(containerPID int, cmdArray []string, containerName stri
 	// 尝试创建路径
 	if err := os.MkdirAll(dirUrl, 0622); err != nil {
 		fmt.Printf("创建路径%s 失败: %v", dirUrl, err)
-		return "", err
 	}
 	fileName := dirUrl + ConfigName
 	// 创建文件
@@ -89,12 +85,11 @@ func RecordContainerInfo(containerPID int, cmdArray []string, containerName stri
 	defer file.Close()
 	if err != nil {
 		fmt.Printf("创建文件失败%s 失败: %v", fileName, err)
+		return
 	}
 	if _, err := file.WriteString(jsonStr); err != nil {
 		fmt.Printf("写入容器信息失败: %v", err)
-		return "", err
 	}
-	return id, nil
 }
 
 // DeleteContainerInfo 删除容器信息
