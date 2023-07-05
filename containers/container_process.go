@@ -64,7 +64,7 @@ func NewPipe() (*os.File, *os.File, error) {
 }
 
 // RecordContainerInfo 记录容器信息
-func RecordContainerInfo(id string, containerPID int, cmdArray []string, containerName string) {
+func RecordContainerInfo(id string, containerPID int, cmdArray []string, containerName string, volume string) {
 	//获取容器创建时间
 	createTime := time.Now().Format("2006-01-02 15:04:05")
 	// 调整容器名称，用户不传时的默认值
@@ -78,21 +78,27 @@ func RecordContainerInfo(id string, containerPID int, cmdArray []string, contain
 		Command:    strings.Join(cmdArray, ""),
 		Status:     Running,
 		Name:       containerName,
+		Volume:     volume,
 	}
+	recordContainerInfo(containerInfo)
+}
+func recordContainerInfo(info *ContainerInfo) {
 	// 序列化为字符串
-	jsonBytes, err := json.Marshal(containerInfo)
+	jsonBytes, err := json.Marshal(info)
 	if err != nil {
 		fmt.Printf("记录容器信息失败: %v", err)
 		return
 	}
 	jsonStr := string(jsonBytes)
 	// 容器信息记录的路径
-	dirUrl := fmt.Sprintf(DefaultInfoLocation, id)
+	dirUrl := fmt.Sprintf(DefaultInfoLocation, info.Id)
 	// 尝试创建路径
 	if err := os.MkdirAll(dirUrl, 0622); err != nil {
 		fmt.Printf("创建路径%s 失败: %v", dirUrl, err)
 	}
 	fileName := dirUrl + ConfigName
+	//删除旧的文件，如果存在的话
+	_ = os.Remove(fileName)
 	// 创建文件
 	file, err := os.Create(fileName)
 	defer file.Close()
@@ -210,4 +216,38 @@ func ExecContainer(containerId string, cmdArray []string) {
 	if err := cmd.Run(); err != nil {
 		fmt.Printf("exec contaienr %s error", containerId, err)
 	}
+}
+
+func StopContainer(containerId string) {
+	info, err := GetContainerInfo(containerId)
+	if err != nil {
+		fmt.Printf("获取容器:%s 进程pid,失败 %v\n", containerId, err)
+	}
+	pid, _ := strconv.Atoi(info.Pid)
+	// 调用 kill
+	err = syscall.Kill(pid, syscall.SIGTERM)
+	if err != nil {
+		fmt.Printf("关闭容器失败 %v\n", err)
+		return
+	}
+	// 修改容器状态
+	info.Pid = ""
+	info.Status = Stop
+	//记录到容器信息
+	recordContainerInfo(info)
+}
+func RemoveContainer(containerId string) {
+	//获取容器信息
+	info, err := GetContainerInfo(containerId)
+	if err != nil {
+		fmt.Printf("获取容器:%s 进程,失败 %v\n", containerId, err)
+		return
+	}
+	if info.Status != Stop {
+		fmt.Println("只能删除停止的容器")
+		return
+	}
+	baseUrl := fmt.Sprintf(DefaultInfoLocation, containerId)
+	DeleteWorkSpace(baseUrl, info.Volume)
+	DeleteContainerInfo(info.Id)
 }

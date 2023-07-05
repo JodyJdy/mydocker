@@ -9,22 +9,21 @@ package nsenter
 #include <stdlib.h>
 #include <string.h>
 #include <fcntl.h>
-// 原先的写法，并不会生效，采用手动执行的方式进入命名空间
-static void enter_namespace(void) {
+__attribute__((constructor)) static void Enter_namespace(void) {
 	char *mydocker_pid;
 	mydocker_pid = getenv("mydocker_pid");
 	if (mydocker_pid) {
-		fprintf(stdout, "got mydocker_pid=%s\n", mydocker_pid);
+		//fprintf(stdout, "got mydocker_pid=%s\n", mydocker_pid);
 	} else {
-		fprintf(stdout, "missing mydocker_pid env skip nsenter");
+		//fprintf(stdout, "missing mydocker_pid env skip nsenter");
 		return;
 	}
 	char *mydocker_cmd;
 	mydocker_cmd = getenv("mydocker_cmd");
 	if (mydocker_cmd) {
-		fprintf(stdout, "got mydocker_cmd=%s\n", mydocker_cmd);
+		//fprintf(stdout, "got mydocker_cmd=%s\n", mydocker_cmd);
 	} else {
-		fprintf(stdout, "missing mydocker_cmd env skip nsenter");
+		//fprintf(stdout, "missing mydocker_cmd env skip nsenter");
 		return;
 	}
 	int i;
@@ -36,9 +35,9 @@ static void enter_namespace(void) {
 		int fd = open(nspath, O_RDONLY);
 
 		if (setns(fd, 0) == -1) {
-			fprintf(stderr, "setns on %s namespace failed: %s\n", namespaces[i], strerror(errno));
+			//fprintf(stderr, "setns on %s namespace failed: %s\n", namespaces[i], strerror(errno));
 		} else {
-			fprintf(stdout, "setns on %s namespace succeeded\n", namespaces[i]);
+			//fprintf(stdout, "setns on %s namespace succeeded\n", namespaces[i]);
 		}
 		close(fd);
 	}
@@ -49,6 +48,6 @@ static void enter_namespace(void) {
 */
 import "C"
 
-func CallC() {
-	C.enter_namespace()
+// SetNs 这个函数的唯一作用是让当前模块在构建时加入进去
+func SetNs() {
 }

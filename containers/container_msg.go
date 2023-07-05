@@ -7,6 +7,7 @@ type ContainerInfo struct {
 	Command    string `json:"command"`     //容器内init进程的运行命令
 	CreateTime string `json:"create_time"` //创建时间
 	Status     string `json:"status"`      //容器的状态
+	Volume     string `json:"volume"`      // 容器的卷挂载
 }
 
 // 定义目录相关的常量，存放信息

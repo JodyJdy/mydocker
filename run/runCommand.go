@@ -24,7 +24,7 @@ func Run(tty bool, cmdArray []string, res *cgroups.ResourceConfig, volume string
 		fmt.Errorf("启动父进程失败:%v\n", err)
 	}
 	// 记录容器信息
-	containers.RecordContainerInfo(containerId, parent.Process.Pid, cmdArray, containerName)
+	containers.RecordContainerInfo(containerId, parent.Process.Pid, cmdArray, containerName, volume)
 	// 创建cgroup manager
 	cgroupManager := cgroups.NewCgroupManager("mydocker-cgroup")
 	defer cgroupManager.Remove()
@@ -51,8 +51,8 @@ func Run(tty bool, cmdArray []string, res *cgroups.ResourceConfig, volume string
 		}
 		// 删除工作空间，卷的挂载点
 		containers.DeleteWorkSpace(containerBaseUrl, volume)
-		containers.DeleteContainerInfo(containerId)
 		// 删除记录的容器信息
+		containers.DeleteContainerInfo(containerId)
 	}
 	os.Exit(-1)
 }
@@ -134,4 +134,14 @@ func Log(containerId string) {
 // Exec 进入容器
 func Exec(containerId string, cmdArray []string) {
 	containers.ExecContainer(containerId, cmdArray)
+}
+
+// Stop 停止容器
+func Stop(containerId string) {
+	containers.StopContainer(containerId)
+}
+
+// Remove 删除容器
+func Remove(containerId string) {
+	containers.RemoveContainer(containerId)
 }

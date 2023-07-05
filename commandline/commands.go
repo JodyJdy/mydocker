@@ -15,7 +15,8 @@ func StartCommands() {
 	app := cli.NewApp()
 	app.Name = "mydocker"
 	app.Usage = "mydocker is a simple container runtime implementation"
-	app.Commands = []cli.Command{RunCommand, InitCommand, CommitCommand, PsCommand, LogCommand, ExecCommand}
+	app.Commands = []cli.Command{RunCommand, InitCommand, CommitCommand, PsCommand, LogCommand,
+		ExecCommand, StopCommand, RemoveCommand}
 	err := app.Run(os.Args)
 	if err != nil {
 		log.Fatalln(err)
@@ -150,10 +151,10 @@ var ExecCommand = cli.Command{
 	Name:  "exec",
 	Usage: "在容器中执行命令",
 	Action: func(context *cli.Context) error {
-		// 说明当前是fork的进程，环境变量以及设置好， c语言的代码也已经执行了
+		// 说明当前是fork的进程，环境变量已经设置好， c语言的代码也已经执行了
 		if os.Getenv(containers.ENV_EXEC_PID) != "" {
 			fmt.Printf("pid callback pid %d\n", os.Getpid())
-			nsenter.CallC()
+			nsenter.SetNs()
 			return nil
 		}
 		if len(context.Args()) < 2 {
@@ -168,6 +169,28 @@ var ExecCommand = cli.Command{
 		}
 		//执行命令
 		run.Exec(containerId, commandArray)
+		return nil
+	},
+}
+var StopCommand = cli.Command{
+	Name:  "stop",
+	Usage: "停止容器",
+	Action: func(context *cli.Context) error {
+		if len(context.Args()) < 1 {
+			return fmt.Errorf("缺少容器名称")
+		}
+		run.Stop(context.Args()[0])
+		return nil
+	},
+}
+var RemoveCommand = cli.Command{
+	Name:  "remove",
+	Usage: "删除容器",
+	Action: func(context *cli.Context) error {
+		if len(context.Args()) < 1 {
+			return fmt.Errorf("缺少容器名称")
+		}
+		run.Remove(context.Args()[0])
 		return nil
 	},
 }
