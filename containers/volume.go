@@ -8,41 +8,35 @@ import (
 )
 
 // NewWorkSpace 返回挂载后的merged目录
-func NewWorkSpace(containerBaseUrl, volume string) string {
-	err := createLowerDir(containerBaseUrl)
-	if err != nil {
-		_ = fmt.Errorf("创建LowerDir失败: %v", err)
-		return ""
-	}
+func NewWorkSpace(containerBaseUrl, volume string, image string) string {
+	lowDir := getLowerDir(image)
 	createUpperDir(containerBaseUrl)
 	createWorkDir(containerBaseUrl)
-	mergedDir := createMergedDir(containerBaseUrl)
+	mergedDir := createMergedDir(containerBaseUrl, lowDir)
 	//创建卷的挂载
 	CreateVolume(mergedDir, volume)
 	return mergedDir
 }
 
-// 创建只读层
-func createLowerDir(containerBaseUrl string) error {
-	lowerDir := containerBaseUrl + "lower/"
-	// busybox.tar @TODO 这里用于处理镜像，现在使用的是默认的镜像
-	busyboxTarUrl := "/root/busybox.tar"
-	exist, err := PathExists(lowerDir)
+// 获取只读层 目录
+func getLowerDir(image string) string {
+	var lowDirs []string
+	lowDirs = append(lowDirs, fmt.Sprintf(ImageLayerLocation, image))
+	info, err := GetImageInfo(image)
 	if err != nil {
-		fmt.Printf("Fail to judge whether dir %s exists. %v \n", lowerDir, err)
-		return err
+		fmt.Println("镜像不存在")
 	}
-	if !exist {
-		if err := os.MkdirAll(lowerDir, 0622); err != nil {
-			fmt.Printf("Mkdir %s error %v \n", lowerDir, err)
-			return err
-		}
-		if _, err := exec.Command("tar", "--strip-components", "1", "-xvf", busyboxTarUrl, "-C", lowerDir).CombinedOutput(); err != nil {
-			fmt.Printf("Untar dir %s error %v\n", lowerDir, err)
-			return err
+	for {
+		//按层查找
+		if info.From != "" {
+			from := info.From
+			info, err = GetImageInfo(info.From)
+			lowDirs = append(lowDirs, fmt.Sprintf(ImageLayerLocation, from))
+		} else {
+			break
 		}
 	}
-	return nil
+	return strings.Join(lowDirs, ":")
 }
 func createUpperDir(containerBaseUrl string) {
 	upperDir := containerBaseUrl + "upper/"
@@ -60,14 +54,13 @@ func createWorkDir(containerBaseUrl string) {
 
 //	mount -t overlay  overlay  \
 //	             -olowerdir=/lower,upperdir=/upper,workdir=/work  /merged
-func createMergedDir(containerBaseUrl string) string {
+func createMergedDir(containerBaseUrl string, lowDir string) string {
 	mergedDir := containerBaseUrl + "merged/"
 	if err := os.MkdirAll(mergedDir, 0777); err != nil {
 		fmt.Printf("Mkdir merged layer dir %s error. %v", mergedDir, err)
 	}
 	// 处理卷挂载
-	dirs := fmt.Sprintf("lowerdir=%s,upperdir=%s,workdir=%s", containerBaseUrl+"lower/", containerBaseUrl+"upper/", containerBaseUrl+"work/")
-	// none是挂载名称， @todo 应该每个容器都有自己的一个名称
+	dirs := fmt.Sprintf("lowerdir=%s,upperdir=%s,workdir=%s", lowDir, containerBaseUrl+"upper/", containerBaseUrl+"work/")
 	cmd := exec.Command("mount", "-t", "overlay", "-o", dirs, "none", mergedDir)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr

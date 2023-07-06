@@ -12,10 +12,12 @@ import (
 	"syscall"
 )
 
-func Run(tty bool, cmdArray []string, res *cgroups.ResourceConfig, volume string, containerName string, env []string) {
+func Run(tty bool, cmdArray []string, res *cgroups.ResourceConfig, volume string, containerName string, env []string, image string) {
 	// 提前获取容器id
 	containerId := containers.ContainerId()
-	parent, writePipe, containerBaseUrl := containers.NewParentProcess(containerId, tty, volume, env)
+	fmt.Println("打印命令")
+	fmt.Println(cmdArray)
+	parent, writePipe, containerBaseUrl := containers.NewParentProcess(containerId, tty, volume, env, image)
 	if parent == nil {
 		log.Println("New parent process error")
 		return
@@ -23,8 +25,9 @@ func Run(tty bool, cmdArray []string, res *cgroups.ResourceConfig, volume string
 	if err := parent.Start(); err != nil {
 		fmt.Errorf("启动父进程失败:%v\n", err)
 	}
+	fmt.Printf("容器id:   %d", parent.Process.Pid)
 	// 记录容器信息
-	containers.RecordContainerInfo(containerId, parent.Process.Pid, cmdArray, containerName, volume)
+	containers.RecordContainerInfo(containerId, parent.Process.Pid, cmdArray, containerName, volume, image)
 	// 创建cgroup manager
 	cgroupManager := cgroups.NewCgroupManager("mydocker-cgroup")
 	defer cgroupManager.Remove()
@@ -54,10 +57,11 @@ func Run(tty bool, cmdArray []string, res *cgroups.ResourceConfig, volume string
 		// 删除记录的容器信息
 		containers.DeleteContainerInfo(containerId)
 	}
+	fmt.Printf("容器id:   %d", parent.Process.Pid)
 	os.Exit(-1)
 }
 
-// 将命令行信息写入到管道文件里面
+// SendInitCommand 将命令行信息写入到管道文件里面
 func sendInitCommand(comArray []string, writePipe *os.File) {
 	command := strings.Join(comArray, " ")
 	fmt.Printf("command all is %s\n", command)
@@ -85,7 +89,6 @@ func RunContainerInitProcess() error {
 		fmt.Printf("Exec loop path error %v\n", err)
 		return err
 	}
-	fmt.Printf("Find path %s\n", path)
 	// 当前处于父进程中， exec 会执行cmd，将cmd对应的进程代替父进程
 	//也就是说容器中 pid =1的进程会是 cmd对应的进程
 	if err := syscall.Exec(path, cmdArray[0:], os.Environ()); err != nil {

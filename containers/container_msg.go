@@ -8,6 +8,7 @@ type ContainerInfo struct {
 	CreateTime string `json:"create_time"` //创建时间
 	Status     string `json:"status"`      //容器的状态
 	Volume     string `json:"volume"`      // 容器的卷挂载
+	Image      string `json:"image"`       //使用镜像
 }
 
 // 定义目录相关的常量，存放信息
@@ -19,6 +20,6 @@ var (
 	// DefaultInfoLocation %s 是容器的标识
 	DefaultInfoLocation  = "/var/run/mydocker/containers/%s/"
 	AllContainerLocation = "/var/run/mydocker/containers/"
-	ConfigName           = "config.json"
+	ContainerConfigName  = "config.json"
 	ContainerLogName     = "container.log"
 )

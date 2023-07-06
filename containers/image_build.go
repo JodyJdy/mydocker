@@ -1,4 +1,4 @@
-package images
+package containers
 
 import (
 	"bufio"
@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path"
 	"strings"
 	"text/tabwriter"
 	"time"
@@ -85,7 +86,7 @@ func ListImageInfo() {
 	// 记录所有容器的对象
 	var imageInfos []*ImageInfo
 	for _, containerDir := range imageDirs {
-		tmpContainer, err := ReadContainerInfo(containerDir)
+		tmpContainer, err := ReadImageInfo(containerDir)
 		if err != nil {
 			fmt.Errorf("Get container info error %v", err)
 			continue
@@ -110,7 +111,7 @@ func ListImageInfo() {
 	}
 }
 
-func ReadContainerInfo(imageDir os.DirEntry) (*ImageInfo, error) {
+func ReadImageInfo(imageDir os.DirEntry) (*ImageInfo, error) {
 	dir := fmt.Sprintf(ImageInfoLocation, imageDir.Name())
 	imageInfoDir := dir + ConfigName
 	content, err := os.ReadFile(imageInfoDir)
@@ -125,7 +126,7 @@ func ReadContainerInfo(imageDir os.DirEntry) (*ImageInfo, error) {
 	}
 	return &info, nil
 }
-func GetContainerInfo(imageId string) (*ImageInfo, error) {
+func GetImageInfo(imageId string) (*ImageInfo, error) {
 	dir := fmt.Sprintf(ImageInfoLocation, imageId)
 	imageInfoFile := dir + ConfigName
 	content, err := os.ReadFile(imageInfoFile)
@@ -158,8 +159,12 @@ func BuildImage(tag string, dockerFile string) {
 		CreateTime: time.Now().Format("2006-01-02 15:04:05"),
 	}
 	fmt.Println(info)
-	d := &DockerFile{}
+	d := &DockerFile{
+		// 默认的工作目录
+		WorkDir: "/",
+	}
 	file, _ := os.Open(dockerFile)
+	var containerId = new(string)
 	r := bufio.NewReader(file)
 	for {
 		s, _, err := r.ReadLine()
@@ -171,10 +176,10 @@ func BuildImage(tag string, dockerFile string) {
 		fmt.Println(line)
 		switch {
 		case strings.HasPrefix(line, FROM):
-			d.from(line)
+			d.from(line, containerId)
 			break
 		case strings.HasPrefix(line, RUN):
-			d.run(line)
+			d.run(line, *containerId)
 			break
 		case strings.HasPrefix(line, ADD):
 			d.add(line)
@@ -204,76 +209,86 @@ func BuildImage(tag string, dockerFile string) {
 			continue
 		}
 	}
+	recordImageInfo(info)
 }
-func (d *DockerFile) from(f string) {
+func (d *DockerFile) from(f string, containerId *string) {
 	f = strings.TrimPrefix(f, FROM)
 	d.From = strings.Trim(f, " ")
+	*containerId = BuildFrom(d.From)
 }
-func (d *DockerFile) run(r string) {
+func (d *DockerFile) run(r string, containerId string) {
 	r = strings.TrimPrefix(r, RUN)
 	r, b := isArrayType(r)
 	if b {
-		parseArray(r)
+		BuildRun(containerId, parseArray(r))
 	} else {
-		parseCommandLine(r)
+		BuildRun(containerId, parseCommandLine(r))
 	}
 }
 func (d *DockerFile) add(a string) {
 	a = strings.TrimPrefix(a, ADD)
 	a, b := isArrayType(a)
+	var list []string
 	if b {
-		parseArray(a)
+		list = parseArray(a)
 	} else {
-		parseCommandLine(a)
+		list = parseCommandLine(a)
 	}
+	fmt.Println(list)
 }
 func (d *DockerFile) copy(c string) {
 	c = strings.TrimPrefix(c, COPY)
 	c, b := isArrayType(c)
+	var list []string
 	if b {
-		parseArray(c)
+		list = parseArray(c)
 	} else {
-		parseCommandLine(c)
+		list = parseCommandLine(c)
 	}
+	fmt.Println(list)
 }
 func (d *DockerFile) expose(e string) {
 	e = strings.TrimPrefix(e, EXPOSE)
-	parseCommandLine(e)
+	// 端口列表
+	ports := parseCommandLine(e)
+	d.Expose = ports
 }
 func (d *DockerFile) env(e string) {
 	e = strings.TrimPrefix(e, ENV)
 	e, b := isArrayType(e)
+	var list []string
 	if b {
-		parseArray(e)
+		list = parseArray(e)
 	} else {
-		parseCommandLine(e)
+		list = parseCommandLine(e)
 	}
+	fmt.Println(list)
 }
 func (d *DockerFile) cmd(c string) {
 	c = strings.TrimPrefix(c, CMD)
 	c, b := isArrayType(c)
 	if b {
-		parseArray(c)
+		d.Cmd1 = parseArray(c)
 	} else {
-		parseCommandLine(c)
+		d.Cmd2 = parseCommandLine(c)
 	}
 }
 func (d *DockerFile) entrypoint(e string) {
 	e = strings.TrimPrefix(e, ENTRYPOINT)
 	e, b := isArrayType(e)
 	if b {
-		parseArray(e)
+		d.EntryPoint1 = parseArray(e)
 	} else {
-		parseCommandLine(e)
+		d.EntryPoint2 = parseCommandLine(e)
 	}
 }
 func (d *DockerFile) volume(v string) {
 	v = strings.TrimPrefix(v, VOLUME)
-	parseCommandLine(v)
+	d.Volumes = parseCommandLine(v)
 }
 func (d *DockerFile) workDir(w string) {
 	w = strings.TrimPrefix(w, WORKDIR)
-	parseCommandLine(w)
+	d.WorkDir = path.Clean(w)
 }
 
 // 判断是否是数组类型

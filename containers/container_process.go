@@ -15,7 +15,7 @@ import (
 
 // NewParentProcess 创建一个父进程， 父进程的目的是
 // 真正的执行cmd，并用cmd 对应的进程替换自身
-func NewParentProcess(containerId string, tty bool, volume string, env []string) (*exec.Cmd, *os.File, string) {
+func NewParentProcess(containerId string, tty bool, volume string, env []string, image string) (*exec.Cmd, *os.File, string) {
 	// 容器工作目录 /var/run/mydocker/containers/容器id/
 	containerBaseUrl := fmt.Sprintf(DefaultInfoLocation, containerId)
 	readPipe, writePipe, err := NewPipe()
@@ -53,7 +53,7 @@ func NewParentProcess(containerId string, tty bool, volume string, env []string)
 	// 设置环境变量
 	cmd.Env = append(os.Environ(), env...)
 	// 工作目录，为 overlay文件系统中的 merge目录 ,容器进程，会以merged目录作为根目录运行
-	cmd.Dir = NewWorkSpace(containerBaseUrl, volume)
+	cmd.Dir = NewWorkSpace(containerBaseUrl, volume, image)
 
 	return cmd, writePipe, containerBaseUrl
 }
@@ -68,7 +68,7 @@ func NewPipe() (*os.File, *os.File, error) {
 }
 
 // RecordContainerInfo 记录容器信息
-func RecordContainerInfo(id string, containerPID int, cmdArray []string, containerName string, volume string) {
+func RecordContainerInfo(id string, containerPID int, cmdArray []string, containerName string, volume string, image string) {
 	//获取容器创建时间
 	createTime := time.Now().Format("2006-01-02 15:04:05")
 	// 调整容器名称，用户不传时的默认值
@@ -83,6 +83,7 @@ func RecordContainerInfo(id string, containerPID int, cmdArray []string, contain
 		Status:     Running,
 		Name:       containerName,
 		Volume:     volume,
+		Image:      image,
 	}
 	recordContainerInfo(containerInfo)
 }

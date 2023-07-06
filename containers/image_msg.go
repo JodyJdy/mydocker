@@ -1,4 +1,4 @@
-package images
+package containers
 
 type ImageInfo struct {
 	Id         string   `json:"id"`          //镜像id
@@ -22,19 +22,26 @@ var (
 	AllImageLocation       = "/var/run/mydocker/images/"
 	BaseImageUrl           = AllImageLocation + "base/"
 	BaseImageLayerLocation = BaseImageUrl + "layer/"
-	// ConfigName 存储镜像信息
+	// ImageConfigName 存储镜像信息
 	ConfigName = "config.json"
 )
 
 // DockerFile 解析DockerFile,解析时，有些是直接执行的，有些是需要留档的
 type DockerFile struct {
 	// 暂时使用镜像id
-	From       string
-	Expose     string
-	Env        []string
-	Cmd        string
-	EntryPoint string
-	Volume     []string
+	From   string
+	Expose []string
+	Env    []string
+	// []形式
+	Cmd1 []string
+	// xxxxxx 形式
+	Cmd2 []string
+	// []形式
+	EntryPoint1 []string
+	EntryPoint2 []string
+	Volumes     []string
+	// 工作目录
+	WorkDir string
 }
 
 const FROM = "FROM"

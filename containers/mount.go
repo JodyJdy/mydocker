@@ -12,7 +12,8 @@ func SetUpMount() {
 	//获取工作目录
 	pwd, err := os.Getwd()
 	if err != nil {
-		_ = fmt.Errorf("获取当前工作目录失败：%v \n", err)
+		_ = fmt.Errorf("获取当前工作目录失t"+
+			"：%v \n", err)
 	}
 	//挂载root目录
 	err = pivotRoot(pwd)

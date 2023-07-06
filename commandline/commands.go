@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/urfave/cli"
 	"log"
-	"mydocker/images"
 	"nsenter"
 	"os"
 	"run"
@@ -58,10 +57,14 @@ var RunCommand = cli.Command{
 			Name:  "name",
 			Usage: "container name",
 		},
-
 		cli.StringSliceFlag{
 			Name:  "e",
 			Usage: "set environment",
+		},
+		cli.StringFlag{
+			Name: "image",
+			// @Todo 先使用镜像id，后期优化
+			Usage: "image id",
 		},
 	},
 	// 具体的执行命令
@@ -92,7 +95,13 @@ var RunCommand = cli.Command{
 		containerName := context.String("name")
 		//获取容器名称
 		envSlice := context.StringSlice("e")
-		run.Run(tty, cmdArray, res, volume, containerName, envSlice)
+		// 获取使用的镜像
+		imageId := context.String("image")
+		if imageId == "" {
+			fmt.Println("镜像id不能为空")
+			return nil
+		}
+		run.Run(tty, cmdArray, res, volume, containerName, envSlice, imageId)
 		return nil
 	},
 }
@@ -210,7 +219,7 @@ var BuildBaseImageCommand = cli.Command{
 		if len(context.Args()) < 1 {
 			return fmt.Errorf("缺少基础镜像tar包路径")
 		}
-		images.BuildBaseImage(context.Args()[0])
+		containers.BuildBaseImage(context.Args()[0])
 		return nil
 	},
 }
@@ -218,7 +227,7 @@ var ImagesCommand = cli.Command{
 	Name:  "images",
 	Usage: "展示镜像",
 	Action: func(context *cli.Context) error {
-		images.ListImageInfo()
+		containers.ListImageInfo()
 		return nil
 	},
 }
@@ -236,6 +245,6 @@ var BuildImageCommand = cli.Command{
 		},
 	},
 	Action: func(context *cli.Context) {
-		images.BuildImage(context.String("t"), context.String("f"))
+		containers.BuildImage(context.String("t"), context.String("f"))
 	},
 }
