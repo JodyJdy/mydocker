@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/urfave/cli"
 	"log"
+	"mydocker/images"
 	"nsenter"
 	"os"
 	"run"
@@ -16,7 +17,7 @@ func StartCommands() {
 	app.Name = "mydocker"
 	app.Usage = "mydocker is a simple container runtime implementation"
 	app.Commands = []cli.Command{RunCommand, InitCommand, CommitCommand, PsCommand, LogCommand,
-		ExecCommand, StopCommand, RemoveCommand}
+		ExecCommand, StopCommand, RemoveCommand, BuildBaseImageCommand, ImagesCommand, BuildImageCommand}
 	err := app.Run(os.Args)
 	if err != nil {
 		log.Fatalln(err)
@@ -199,5 +200,42 @@ var RemoveCommand = cli.Command{
 		}
 		run.Remove(context.Args()[0])
 		return nil
+	},
+}
+
+var BuildBaseImageCommand = cli.Command{
+	Name:  "buildBase",
+	Usage: "构建基础镜像",
+	Action: func(context *cli.Context) error {
+		if len(context.Args()) < 1 {
+			return fmt.Errorf("缺少基础镜像tar包路径")
+		}
+		images.BuildBaseImage(context.Args()[0])
+		return nil
+	},
+}
+var ImagesCommand = cli.Command{
+	Name:  "images",
+	Usage: "展示镜像",
+	Action: func(context *cli.Context) error {
+		images.ListImageInfo()
+		return nil
+	},
+}
+var BuildImageCommand = cli.Command{
+	Name:  "build",
+	Usage: "构建镜像",
+	Flags: []cli.Flag{
+		cli.StringFlag{
+			Name:  "t",
+			Usage: "镜像标签",
+		},
+		cli.StringFlag{
+			Name:  "f",
+			Usage: "docker file路径",
+		},
+	},
+	Action: func(context *cli.Context) {
+		images.BuildImage(context.String("t"), context.String("f"))
 	},
 }

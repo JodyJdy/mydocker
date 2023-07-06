@@ -38,7 +38,7 @@ func createLowerDir(containerBaseUrl string) error {
 			return err
 		}
 		if _, err := exec.Command("tar", "--strip-components", "1", "-xvf", busyboxTarUrl, "-C", lowerDir).CombinedOutput(); err != nil {
-			fmt.Print("Untar dir %s error %v", lowerDir, err)
+			fmt.Printf("Untar dir %s error %v\n", lowerDir, err)
 			return err
 		}
 	}
