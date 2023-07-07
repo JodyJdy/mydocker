@@ -8,14 +8,15 @@ import (
 	"log"
 	"os"
 	"os/exec"
-	"strings"
+	"syscall"
 )
 
 func Run(tty bool, cmdArray []string, res *cgroups.ResourceConfig, volume string, containerName string, env []string, image string) {
 	// 提前获取容器id
 	containerId := containers.ContainerId()
+	command := containers.ResolveCmd(cmdArray, image, tty)
 	fmt.Println("打印命令")
-	fmt.Println(cmdArray)
+	fmt.Println(command)
 	parent, writePipe, containerBaseUrl := containers.NewParentProcess(containerId, tty, volume, env, image)
 	if parent == nil {
 		log.Println("New parent process error")
@@ -43,7 +44,7 @@ func Run(tty bool, cmdArray []string, res *cgroups.ResourceConfig, volume string
 		return
 	}
 	// 将命令写到管道里面
-	sendInitCommand(cmdArray, writePipe)
+	sendInitCommand(command, writePipe)
 	if tty {
 		// 等待parent进程执行完毕
 		err = parent.Wait()
@@ -61,63 +62,51 @@ func Run(tty bool, cmdArray []string, res *cgroups.ResourceConfig, volume string
 }
 
 // SendInitCommand 将命令行信息写入到管道文件里面
-func sendInitCommand(comArray []string, writePipe *os.File) {
-	command := strings.Join(comArray, " ")
-	fmt.Printf("command all is %s\n", command)
-	_, err := writePipe.WriteString(command)
-	if err != nil {
-		return
-	}
-	err = writePipe.Close()
-	if err != nil {
-		return
-	}
+func sendInitCommand(cmd *containers.CommandArray, writePipe *os.File) {
+	containers.SaveCommand(cmd, writePipe)
 }
 
 // RunContainerInitProcess 执行容器内的进程
 func RunContainerInitProcess() error {
-	cmdArray := readUserCommand()
+	command := readUserCommand()
+	cmdArray := command.Cmds
 	fmt.Printf("命令行是:%v\n", cmdArray)
 	if cmdArray == nil || len(cmdArray) == 0 {
 		return fmt.Errorf("run container get user command error, cmdArray is nil")
 	}
 	// 初始化挂载信息
 	containers.SetUpMount()
-	/*	path, err := exec.LookPath(cmdArray[0])
+	if command.ShellType {
+		fmt.Println("shell type")
+		cmd := exec.Command(cmdArray[0], cmdArray[1:]...)
+		if err := cmd.Start(); err != nil {
+			fmt.Println("Command error %v\n", err)
+		}
+	} else {
+		fmt.Println("exec type")
+		path, err := exec.LookPath(cmdArray[0])
+		fmt.Println("Find path %s", path)
 		if err != nil {
 			fmt.Printf("Exec loop path error %v\n", err)
 			return err
 		}
-	*/cmd := exec.Command("/bin/sh", "-c", "\" sleep 9999\"")
-	// 当前处于父进程中， exec 会执行cmd，将cmd对应的进程代替父进程
-	//也就是说容器中 pid =1的进程会是 cmd对应的进程
-	//if err := syscall.Exec(path, cmdArray[0:], os.Environ()); err != nil {
-	//	fmt.Println(err.Error())
-	//}
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	err := cmd.Run()
-	if err != nil {
-		fmt.Printf("执行失败: %v", err)
-		return err
+		// 当前处于父进程中， exec 会执行cmd，将cmd对应的进程代替父进程
+		//也就是说容器中 pid =1的进程会是 cmd对应的进程
+		if err := syscall.Exec(path, cmdArray[0:], os.Environ()); err != nil {
+			fmt.Println(err.Error())
+		}
 	}
-
 	return nil
 }
 
 // 从管道里面读取命令
-func readUserCommand() []string {
+func readUserCommand() *containers.CommandArray {
 	// 1个进程默认有三个文件描述符， 标准输入，标准输出，标准错误，文件描述符分别是 0,1,2
 	// 当前读取的文件是第四个，文件描述符为3
+	fmt.Println("读取管道文件")
 	pipe := os.NewFile(uintptr(3), "pipe")
-	msg, err := io.ReadAll(pipe)
-	if err != nil {
-		fmt.Printf("init read pipe error %v\n", err)
-		return nil
-	}
-	msgStr := string(msg)
-	return strings.Split(msgStr, " ")
+	command := new(containers.CommandArray)
+	return containers.LoadCommand(command, pipe)
 }
 
 // Ps 列出所有进程

@@ -69,9 +69,6 @@ var RunCommand = cli.Command{
 	},
 	// 具体的执行命令
 	Action: func(context *cli.Context) error {
-		if len(context.Args()) < 1 {
-			return fmt.Errorf("missing containers command")
-		}
 		// 获取要执行run的命令
 		var cmdArray []string
 		for _, arg := range context.Args() {
@@ -111,12 +108,6 @@ var InitCommand = cli.Command{
 	Name: "init",
 	Usage: `Init containers process run user's process in containers. Do not call it outside 
 		`,
-	Flags: []cli.Flag{
-		cli.BoolFlag{
-			Name:  "ti",
-			Usage: "enable tty",
-		},
-	},
 	// 具体的执行命令
 	Action: func(context *cli.Context) error {
 		log.Println("启动 init 进程")

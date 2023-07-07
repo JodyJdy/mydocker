@@ -40,10 +40,14 @@ func BuildBaseImage(imageTarUrl string) {
 // 存储基础镜像信息
 func storeBaseImageInfo() {
 	info := ImageInfo{
-		Name:       GetBaseImageId(),
-		Id:         GetBaseImageId(),
-		CreateTime: time.Now().Format("2006-01-02 15:04:05"),
-		Version:    "",
+		Name:                GetBaseImageId(),
+		Id:                  GetBaseImageId(),
+		CreateTime:          time.Now().Format("2006-01-02 15:04:05"),
+		EntryPoint:          []string{"sh", "-c"},
+		EntryPointShellType: false,
+		CMD:                 []string{"echo I am base image"},
+		CMDShellType:        false,
+		Version:             "",
 	}
 	recordImageInfo(&info)
 }
@@ -268,18 +272,22 @@ func (d *DockerFile) cmd(c string) {
 	c = strings.TrimPrefix(c, CMD)
 	c, b := isArrayType(c)
 	if b {
-		d.Cmd1 = parseArray(c)
+		d.CMD = parseArray(c)
+		d.EntryPointShellType = false
 	} else {
-		d.Cmd2 = parseCommandLine(c)
+		d.CMD = parseCommandLine(c)
+		d.EntryPointShellType = true
 	}
 }
 func (d *DockerFile) entrypoint(e string) {
 	e = strings.TrimPrefix(e, ENTRYPOINT)
 	e, b := isArrayType(e)
 	if b {
-		d.EntryPoint1 = parseArray(e)
+		d.EntryPoint = parseArray(e)
+		d.EntryPointShellType = false
 	} else {
-		d.EntryPoint2 = parseCommandLine(e)
+		d.EntryPoint = parseCommandLine(e)
+		d.EntryPointShellType = true
 	}
 }
 func (d *DockerFile) volume(v string) {
@@ -378,5 +386,3 @@ func parseCommandLine(s string) []string {
 	fmt.Printf("解析内容是： %v\n", cmd)
 	return cmd
 }
-
-// 解析 a=b类型

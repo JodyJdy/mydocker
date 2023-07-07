@@ -9,6 +9,7 @@ import (
 )
 
 func main() {
+	//fmt.Println(containers.ResolveCmd([]string{"top"}, "base"))
 	commandline.StartCommands()
 }
 
