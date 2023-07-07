@@ -9,7 +9,6 @@ import (
 	"os"
 	"os/exec"
 	"strings"
-	"syscall"
 )
 
 func Run(tty bool, cmdArray []string, res *cgroups.ResourceConfig, volume string, containerName string, env []string, image string) {
@@ -84,16 +83,26 @@ func RunContainerInitProcess() error {
 	}
 	// 初始化挂载信息
 	containers.SetUpMount()
-	path, err := exec.LookPath(cmdArray[0])
-	if err != nil {
-		fmt.Printf("Exec loop path error %v\n", err)
-		return err
-	}
+	/*	path, err := exec.LookPath(cmdArray[0])
+		if err != nil {
+			fmt.Printf("Exec loop path error %v\n", err)
+			return err
+		}
+	*/cmd := exec.Command("/bin/sh", "-c", "\" sleep 9999\"")
 	// 当前处于父进程中， exec 会执行cmd，将cmd对应的进程代替父进程
 	//也就是说容器中 pid =1的进程会是 cmd对应的进程
-	if err := syscall.Exec(path, cmdArray[0:], os.Environ()); err != nil {
-		fmt.Println(err.Error())
+	//if err := syscall.Exec(path, cmdArray[0:], os.Environ()); err != nil {
+	//	fmt.Println(err.Error())
+	//}
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	err := cmd.Run()
+	if err != nil {
+		fmt.Printf("执行失败: %v", err)
+		return err
 	}
+
 	return nil
 }
 
