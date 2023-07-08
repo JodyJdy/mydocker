@@ -15,13 +15,11 @@ import (
 
 // NewParentProcess 创建一个父进程， 父进程的目的是
 // 真正的执行cmd，并用cmd 对应的进程替换自身
-func NewParentProcess(containerId string, tty bool, volume string, env []string, image string) (*exec.Cmd, *os.File, string) {
-	// 容器工作目录 /var/run/mydocker/containers/容器id/
-	containerBaseUrl := fmt.Sprintf(DefaultInfoLocation, containerId)
+func NewParentProcess(info *ContainerInfo, tty bool, volume string, env []string, image string) (*exec.Cmd, *os.File) {
 	readPipe, writePipe, err := NewPipe()
 	if err != nil {
 		_ = fmt.Errorf("new pipe error %v", err)
-		return nil, nil, ""
+		return nil, nil
 	}
 	// 调用mydocker的 init命令， 执行command
 	cmd := exec.Command("/proc/self/exe", "init")
@@ -35,15 +33,15 @@ func NewParentProcess(containerId string, tty bool, volume string, env []string,
 		cmd.Stderr = os.Stderr
 	} else {
 		// 生产容器对应目录的container.log文件
-		if err := os.MkdirAll(containerBaseUrl, 0622); err != nil {
-			fmt.Printf("创建目录 %s 失败 %v", containerBaseUrl, err)
-			return nil, nil, ""
+		if err := os.MkdirAll(info.BaseUrl, 0622); err != nil {
+			fmt.Printf("创建目录 %s 失败 %v", info.BaseUrl, err)
+			return nil, nil
 		}
-		logFilePath := containerBaseUrl + ContainerLogName
+		logFilePath := info.BaseUrl + ContainerLogName
 		logFile, err := os.Create(logFilePath)
 		if err != nil {
 			fmt.Printf("创建日志文件 %s 失败 %v", logFilePath, err)
-			return nil, nil, ""
+			return nil, nil
 		}
 		// 将进程的输出重定向到logFile中，访问这个文件，就能读取到日志
 		cmd.Stdout = logFile
@@ -53,9 +51,8 @@ func NewParentProcess(containerId string, tty bool, volume string, env []string,
 	// 设置环境变量
 	cmd.Env = append(os.Environ(), env...)
 	// 工作目录，为 overlay文件系统中的 merge目录 ,容器进程，会以merged目录作为根目录运行
-	cmd.Dir = NewWorkSpace(containerBaseUrl, volume, image)
-
-	return cmd, writePipe, containerBaseUrl
+	cmd.Dir = NewWorkSpace(info, volume, image)
+	return cmd, writePipe
 }
 
 // NewPipe 创建管道对象
@@ -68,24 +65,12 @@ func NewPipe() (*os.File, *os.File, error) {
 }
 
 // RecordContainerInfo 记录容器信息
-func RecordContainerInfo(id string, containerPID int, cmdArray []string, containerName string, volume string, image string) {
+func RecordContainerInfo(info *ContainerInfo, pid int) {
 	//获取容器创建时间
-	createTime := time.Now().Format("2006-01-02 15:04:05")
-	// 调整容器名称，用户不传时的默认值
-	if containerName == "" {
-		containerName = id
-	}
-	containerInfo := &ContainerInfo{
-		Id:         id,
-		CreateTime: createTime,
-		Pid:        strconv.Itoa(containerPID),
-		Command:    strings.Join(cmdArray, ""),
-		Status:     Running,
-		Name:       containerName,
-		Volume:     volume,
-		Image:      image,
-	}
-	recordContainerInfo(containerInfo)
+	info.CreateTime = time.Now().Format("2006-01-02 15:04:05")
+	info.Status = Running
+	info.Pid = strconv.Itoa(pid)
+	recordContainerInfo(info)
 }
 func recordContainerInfo(info *ContainerInfo) {
 	// 序列化为字符串
@@ -96,7 +81,7 @@ func recordContainerInfo(info *ContainerInfo) {
 	}
 	jsonStr := string(jsonBytes)
 	// 容器信息记录的路径
-	dirUrl := fmt.Sprintf(DefaultInfoLocation, info.Id)
+	dirUrl := fmt.Sprintf(ContainerInfoLocation, info.Id)
 	// 尝试创建路径
 	if err := os.MkdirAll(dirUrl, 0622); err != nil {
 		fmt.Printf("创建路径%s 失败: %v", dirUrl, err)
@@ -117,10 +102,9 @@ func recordContainerInfo(info *ContainerInfo) {
 }
 
 // DeleteContainerInfo 删除容器信息
-func DeleteContainerInfo(containerId string) {
-	dirUrl := fmt.Sprintf(DefaultInfoLocation, containerId)
-	if err := os.RemoveAll(dirUrl); err != nil {
-		fmt.Printf("删除目录：%s失败 %v", dirUrl, err)
+func DeleteContainerInfo(info *ContainerInfo) {
+	if err := os.RemoveAll(info.BaseUrl); err != nil {
+		fmt.Printf("删除目录：%s失败 %v", info.BaseUrl, err)
 	}
 }
 
@@ -159,7 +143,7 @@ func ListContainerInfo() {
 	}
 }
 func ReadContainerInfo(containerDir os.DirEntry) (*ContainerInfo, error) {
-	dir := fmt.Sprintf(DefaultInfoLocation, containerDir.Name())
+	dir := fmt.Sprintf(ContainerInfoLocation, containerDir.Name())
 	containerInfoFile := dir + ConfigName
 	content, err := os.ReadFile(containerInfoFile)
 	if err != nil {
@@ -174,7 +158,7 @@ func ReadContainerInfo(containerDir os.DirEntry) (*ContainerInfo, error) {
 	return &containerInfo, nil
 }
 func GetContainerInfo(containerId string) (*ContainerInfo, error) {
-	dir := fmt.Sprintf(DefaultInfoLocation, containerId)
+	dir := fmt.Sprintf(ContainerInfoLocation, containerId)
 	containerInfoFile := dir + ConfigName
 	content, err := os.ReadFile(containerInfoFile)
 	if err != nil {
@@ -268,7 +252,6 @@ func RemoveContainer(containerId string) {
 		fmt.Println("只能删除停止的容器")
 		return
 	}
-	baseUrl := fmt.Sprintf(DefaultInfoLocation, containerId)
-	DeleteWorkSpace(baseUrl, info.Volume)
-	DeleteContainerInfo(info.Id)
+	DeleteWorkSpace(info)
+	DeleteContainerInfo(info)
 }

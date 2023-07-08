@@ -48,6 +48,7 @@ func storeBaseImageInfo() {
 		CMD:                 []string{"echo I am base image"},
 		CMDShellType:        false,
 		Version:             "",
+		Volume:              []string{"/a", "/b", "/home/jdy"},
 	}
 	recordImageInfo(&info)
 }

@@ -11,6 +11,11 @@ func ContainerId() string {
 	return randStringBytes(10)
 }
 
+// VolumeId 生成默认卷id
+func VolumeId() string {
+	return randStringBytes(5)
+}
+
 func randStringBytes(n int) string {
 	letterBytes := "1234567890"
 	rand.NewSource(time.Now().UnixNano())

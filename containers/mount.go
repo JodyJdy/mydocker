@@ -12,7 +12,7 @@ func SetUpMount() {
 	//获取工作目录
 	pwd, err := os.Getwd()
 	if err != nil {
-		_ = fmt.Errorf("获取当前工作目录失t"+
+		fmt.Printf("获取当前工作目录失t"+
 			"：%v \n", err)
 	}
 	//挂载root目录
@@ -34,7 +34,7 @@ func SetUpMount() {
 	//挂载 /dev 目录
 	err = syscall.Mount("tmpfs", "/dev", "tmpfs", syscall.MS_NOSUID|syscall.MS_STRICTATIME, "mode=755")
 	if err != nil {
-		_ = fmt.Errorf("挂载 /dev 目录 失败: %v \n", err)
+		fmt.Printf("挂载 /dev 目录 失败: %v \n", err)
 		return
 	}
 
@@ -45,7 +45,8 @@ func pivotRoot(containerRoot string) error {
 	//使得 cotainerRoot的文件系统和 宿主机的文件系统不同
 	//这是 pivot_root的必须要求
 	if err := syscall.Mount(containerRoot, containerRoot, "bind", syscall.MS_BIND|syscall.MS_REC, ""); err != nil {
-		return fmt.Errorf("mount rootfs to itself error: %v", err)
+		fmt.Printf("mount rootfs to itself error: %v", err)
+		return err
 	}
 	// 创建 cotainerRoot/.pivot_root 存储 old_root
 	pivotDir := filepath.Join(containerRoot, ".pivot_root")
