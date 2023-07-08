@@ -69,7 +69,6 @@ func NewPipe() (*os.File, *os.File, error) {
 func RecordContainerInfo(info *ContainerInfo, pid int) {
 	//获取容器创建时间
 	info.CreateTime = time.Now().Format("2006-01-02 15:04:05")
-	info.Status = Running
 	info.Pid = strconv.Itoa(pid)
 	recordContainerInfo(info)
 }

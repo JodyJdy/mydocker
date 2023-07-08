@@ -9,14 +9,13 @@ import (
 )
 
 func main() {
-	//fmt.Println(containers.ResolveCmd([]string{"top"}, "base"))
 	commandline.StartCommands()
 }
 
 // worked
 func test1() {
-	cmd := exec.Command("sh", "-c", "sleep 9")
-	err := cmd.Run()
+	cmd := exec.Command("sh", "-c", "touch x.txt")
+	err := cmd.Start()
 	fmt.Println(cmd.Process.Pid)
 	fmt.Println(err)
 }
@@ -39,7 +38,6 @@ func test3() {
 	//commandline.StartCommands()
 	cmdArray := []string{"sh", "-c", "./x.sh"}
 	//cmdArray := []string{"./x.sh"}
-
 	path, err := exec.LookPath(cmdArray[0])
 	if err != nil {
 		fmt.Printf("Exec loop path error %v\n", err)
@@ -50,12 +48,4 @@ func test3() {
 	if err := syscall.Exec(path, cmdArray, os.Environ()); err != nil {
 		fmt.Println(err.Error())
 	}
-}
-func test4() {
-	// 两种方式都可以
-	cmd := exec.Command("sh", "-c", "/mnt/c/Users/Admin/GolandProjects/mydocker/x.sh")
-	//cmd := exec.Command("sh", "-c", "./x.sh")
-	err := cmd.Run()
-	fmt.Println(cmd.Process.Pid)
-	fmt.Println(err)
 }

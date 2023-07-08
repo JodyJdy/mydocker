@@ -9,10 +9,10 @@ import (
 )
 
 type CommandArray struct {
-	// 命令的执行类型
-	ShellType bool `json:"shellType"`
 	// 命令数组
 	Cmds []string `json:"cmds"`
+	//执行命令的目录
+	WorkDir string `json:"workDir"`
 }
 
 func SaveCommand(array *CommandArray, file *os.File) {
@@ -47,26 +47,22 @@ func ResolveCmd(cmdArray []string, imageId string, tty bool) *CommandArray {
 		fmt.Errorf("获取镜像失败: %s, 原因: %v", cmdArray, err)
 	}
 	result := CommandArray{}
+	result.WorkDir = info.WorkDir
 	// tty就不会执行后台进程
 	if tty {
 		result.Cmds = cmdArray
-		result.ShellType = false
 		return &result
 	}
 
 	if info.EntryPointShellType {
 		// 不可覆盖
 		result.Cmds = []string{"sh", "-c", strings.Join(info.EntryPoint, " ")}
-		result.ShellType = true
 	} else {
-		// 可被覆盖
-		result.ShellType = false
 		result.Cmds = info.EntryPoint
 		// 未指定 EntryPoint
 		if len(result.Cmds) == 0 {
 			// 用户未输入，则使用原有的cmd
 			if len(cmdArray) == 0 {
-				result.ShellType = info.CMDShellType
 				if info.CMDShellType {
 					result.Cmds = []string{"sh", "-c", strings.Join(info.CMD, " ")}
 				} else {
@@ -74,7 +70,6 @@ func ResolveCmd(cmdArray []string, imageId string, tty bool) *CommandArray {
 				}
 			} else {
 				// 被覆盖
-				result.ShellType = true
 				result.Cmds = []string{"sh", "-c", strings.Join(cmdArray, " ")}
 			}
 		} else {

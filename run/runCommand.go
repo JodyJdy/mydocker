@@ -14,10 +14,13 @@ import (
 
 func Run(tty bool, cmdArray []string, res *cgroups.ResourceConfig, volume string, containerName string, env []string, image string) {
 	command := containers.ResolveCmd(cmdArray, image, tty)
+	fmt.Println("要执行的命令")
+	fmt.Println(command)
 	// 提前获取容器id
 	containerInfo := &containers.ContainerInfo{
 		Id:        containers.ContainerId(),
 		Command:   strings.Join(command.Cmds, " "),
+		Status:    containers.Running,
 		SetCgroup: true,
 	}
 	if containerName != "" {
@@ -29,8 +32,6 @@ func Run(tty bool, cmdArray []string, res *cgroups.ResourceConfig, volume string
 	}
 	// 获取容器基础目录
 	containerInfo.BaseUrl = fmt.Sprintf(containers.ContainerInfoLocation, containerInfo.Id)
-	fmt.Println("打印命令")
-	fmt.Println(command)
 	parent, writePipe := containers.NewParentProcess(containerInfo, tty, volume, env, image)
 	if parent == nil {
 		log.Println("New parent process error")
@@ -69,25 +70,18 @@ func RunContainerInitProcess() error {
 	}
 	// 初始化挂载信息
 	containers.SetUpMount()
-	if command.ShellType {
-		fmt.Println("shell type")
-		cmd := exec.Command(cmdArray[0], cmdArray[1:]...)
-		if err := cmd.Start(); err != nil {
-			fmt.Println("Command error %v\n", err)
-		}
-	} else {
-		fmt.Println("exec type")
-		path, err := exec.LookPath(cmdArray[0])
-		fmt.Println("Find path %s", path)
-		if err != nil {
-			fmt.Printf("Exec loop path error %v\n", err)
-			return err
-		}
-		// 当前处于父进程中， exec 会执行cmd，将cmd对应的进程代替父进程
-		//也就是说容器中 pid =1的进程会是 cmd对应的进程
-		if err := syscall.Exec(path, cmdArray[0:], os.Environ()); err != nil {
-			fmt.Println(err.Error())
-		}
+	//切换工作目录
+	os.Chdir(command.WorkDir)
+	path, err := exec.LookPath(cmdArray[0])
+	fmt.Println("Find path %s", path)
+	if err != nil {
+		fmt.Printf("Exec loop path error %v\n", err)
+		return err
+	}
+	// 当前处于父进程中， exec 会执行cmd，将cmd对应的进程代替父进程
+	//也就是说容器中 pid =1的进程会是 cmd对应的进程
+	if err := syscall.Exec(path, cmdArray[0:], os.Environ()); err != nil {
+		fmt.Println(err.Error())
 	}
 	return nil
 }

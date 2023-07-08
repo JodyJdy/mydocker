@@ -48,7 +48,8 @@ func storeBaseImageInfo() {
 		CMD:                 []string{"echo I am base image"},
 		CMDShellType:        false,
 		Version:             "",
-		Volume:              []string{"/a", "/b", "/home/jdy"},
+		Volume:              []string{},
+		WorkDir:             "/",
 	}
 	recordImageInfo(&info)
 }
@@ -82,26 +83,10 @@ func recordImageInfo(info *ImageInfo) {
 	}
 }
 func ListImageInfo() {
-	// 返回所有容器的目录
-	imageDirs, err := os.ReadDir(AllImageLocation)
-	if err != nil {
-		fmt.Errorf("read dir %s error %v", AllImageLocation, err)
-		return
-	}
-	// 记录所有容器的对象
-	var imageInfos []*ImageInfo
-	for _, containerDir := range imageDirs {
-		tmpContainer, err := ReadImageInfo(containerDir)
-		if err != nil {
-			fmt.Errorf("Get container info error %v", err)
-			continue
-		}
-		imageInfos = append(imageInfos, tmpContainer)
-	}
 	// 格式化并输出
 	w := tabwriter.NewWriter(os.Stdout, 12, 1, 3, ' ', 0)
 	fmt.Fprint(w, "ID\tNAME\tVERSION\tFROM\tEXPOSE\tCREATED\n")
-	for _, item := range imageInfos {
+	for _, item := range GetImageInfoList() {
 		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n",
 			item.Id,
 			item.Name,
@@ -114,6 +99,26 @@ func ListImageInfo() {
 		fmt.Errorf("Flush error %v\n", err)
 		return
 	}
+}
+func GetImageInfoList() []*ImageInfo {
+	// 返回所有容器的目录
+	imageDirs, err := os.ReadDir(AllImageLocation)
+	if err != nil {
+		fmt.Errorf("read dir %s error %v", AllImageLocation, err)
+		return nil
+	}
+	// 记录所有容器的对象
+	var imageInfos []*ImageInfo
+	for _, containerDir := range imageDirs {
+		tmpContainer, err := ReadImageInfo(containerDir)
+		if err != nil {
+			fmt.Errorf("Get container info error %v", err)
+			continue
+		}
+		imageInfos = append(imageInfos, tmpContainer)
+	}
+	return imageInfos
+
 }
 
 func ReadImageInfo(imageDir os.DirEntry) (*ImageInfo, error) {
@@ -147,44 +152,63 @@ func GetImageInfo(imageId string) (*ImageInfo, error) {
 	return &info, nil
 }
 
-func BuildImage(tag string, dockerFile string) {
+func ReadDockerFile(dockerFile string) []string {
 	if !FileExist(dockerFile) {
 		fmt.Printf("docker file 不存在: %s", dockerFile)
-		return
-	}
-	//获取镜像id
-	imageId := ImageId()
-	//创建镜像目录
-	if err := os.MkdirAll(ImageLayerLocation+imageId, 0622); err != nil {
-		fmt.Printf("创建镜像目录失败: %v", err)
-		return
-	}
-	info := &ImageInfo{
-		Id:         imageId,
-		CreateTime: time.Now().Format("2006-01-02 15:04:05"),
-	}
-	fmt.Println(info)
-	d := &DockerFile{
-		// 默认的工作目录
-		WorkDir: "/",
+		return []string{}
 	}
 	file, _ := os.Open(dockerFile)
-	var containerId = new(string)
 	r := bufio.NewReader(file)
+	var lines []string
 	for {
 		s, _, err := r.ReadLine()
 		// 读取结束
 		if err != nil {
 			break
 		}
-		line := string(s)
-		fmt.Println(line)
+		lines = append(lines, string(s))
+	}
+	return lines
+}
+func BuildImage(tag string, dockerFile string) {
+	lines := ReadDockerFile(dockerFile)
+	if len(lines) == 0 {
+		fmt.Println("dockerfile解析失败")
+		return
+	}
+	//获取镜像id
+	imageId := ImageId()
+	info := &ImageInfo{
+		Id:         imageId,
+		CreateTime: time.Now().Format("2006-01-02 15:04:05"),
+		WorkDir:    "/",
+	}
+	d := &DockerFile{
+		// 默认的工作目录
+		WorkDir: "/",
+	}
+	for i := 0; i < len(lines); {
+		line := ""
+		// 处理多行的情况
+		for i < len(lines) {
+			tempLine := lines[i]
+			i++
+			if tempLine[len(tempLine)-1] == '\\' {
+				line += tempLine[0 : len(tempLine)-1]
+			} else {
+				line += tempLine
+				break
+			}
+		}
+		if line == "" {
+			continue
+		}
 		switch {
 		case strings.HasPrefix(line, FROM):
-			d.from(line, containerId)
+			d.from(line)
 			break
 		case strings.HasPrefix(line, RUN):
-			d.run(line, *containerId)
+			d.run(line)
 			break
 		case strings.HasPrefix(line, ADD):
 			d.add(line)
@@ -214,21 +238,33 @@ func BuildImage(tag string, dockerFile string) {
 			continue
 		}
 	}
+	if true {
+		return
+	}
+	//创建镜像目录
+	if err := os.MkdirAll(path.Join(ImageLayerLocation, imageId), 0622); err != nil {
+		fmt.Printf("创建镜像目录失败: %v", err)
+		return
+	}
 	recordImageInfo(info)
 }
-func (d *DockerFile) from(f string, containerId *string) {
+func (d *DockerFile) from(f string) {
 	f = strings.TrimPrefix(f, FROM)
 	d.From = strings.Trim(f, " ")
-	*containerId = BuildFrom(d.From)
+	d.Info = BuildFrom(d.From)
 }
-func (d *DockerFile) run(r string, containerId string) {
+func (d *DockerFile) run(r string) {
 	r = strings.TrimPrefix(r, RUN)
 	r, b := isArrayType(r)
-	if b {
-		BuildRun(containerId, parseArray(r))
-	} else {
-		BuildRun(containerId, parseCommandLine(r))
+	cmd := &CommandArray{
+		WorkDir: d.WorkDir,
 	}
+	if b {
+		cmd.Cmds = parseArray(r)
+	} else {
+		cmd.Cmds = []string{"sh", "-c", strings.Join(parseCommandLine(r), " ")}
+	}
+	BuildRun(d, cmd)
 }
 func (d *DockerFile) add(a string) {
 	a = strings.TrimPrefix(a, ADD)
@@ -238,6 +274,13 @@ func (d *DockerFile) add(a string) {
 		list = parseArray(a)
 	} else {
 		list = parseCommandLine(a)
+	}
+	//最后一个是要拷贝到的地方
+	cpTarget := path.Join(d.Info.BaseUrl, "merged", list[len(list)-1])
+	fmt.Printf("targiet is %s", cpTarget)
+	pwd, _ := os.Getwd()
+	for i := 0; i < len(list)-1; i++ {
+		Copy(path.Join(pwd, list[i]), cpTarget)
 	}
 	fmt.Println(list)
 }
@@ -250,6 +293,13 @@ func (d *DockerFile) copy(c string) {
 	} else {
 		list = parseCommandLine(c)
 	}
+	//最后一个是要拷贝到的地方
+	cpTarget := path.Join(d.Info.BaseUrl, "merged", list[len(list)-1])
+	fmt.Printf("targiet is %s", cpTarget)
+	pwd, _ := os.Getwd()
+	for i := 0; i < len(list)-1; i++ {
+		Copy(path.Join(pwd, list[i]), cpTarget)
+	}
 	fmt.Println(list)
 }
 func (d *DockerFile) expose(e string) {
@@ -260,14 +310,9 @@ func (d *DockerFile) expose(e string) {
 }
 func (d *DockerFile) env(e string) {
 	e = strings.TrimPrefix(e, ENV)
-	e, b := isArrayType(e)
-	var list []string
-	if b {
-		list = parseArray(e)
-	} else {
-		list = parseCommandLine(e)
-	}
-	fmt.Println(list)
+	//去掉开头的空格
+	e = strings.Trim(e, " ")
+	d.Env = append(d.Env, parseEnv(e)...)
 }
 func (d *DockerFile) cmd(c string) {
 	c = strings.TrimPrefix(c, CMD)
@@ -339,7 +384,7 @@ func parseArray(s string) []string {
 		i++
 
 	}
-	fmt.Printf("解析内容是： %v\n", array)
+	fmt.Printf("dockerFile解析内容是: %v\n", array)
 	return array
 }
 
@@ -384,6 +429,67 @@ func parseCommandLine(s string) []string {
 		cmd = append(cmd, s[i:j])
 		i = j
 	}
-	fmt.Printf("解析内容是： %v\n", cmd)
+	fmt.Printf("dockerFile解析内容是: %v\n", cmd)
 	return cmd
+}
+
+func parseEnv(s string) []string {
+	//先根据第一个key 后面的字符是 空格 还是 = 判断是 单环境变量 还是多环境变量
+	singleEnv := true
+	i := 0
+	for i = 0; i < len(s); i++ {
+		if s[i] == ' ' {
+			break
+		} else if s[i] == '=' {
+			singleEnv = false
+			break
+		}
+	}
+	if singleEnv {
+		return []string{s[0:i] + "=" + s[i+1:]}
+	}
+	var env []string
+	l := 0
+	for i < len(s) {
+		key := s[l : i+1]
+		i++
+		l = i
+		//解析value
+		for i < len(s) {
+			//跳出字符串
+			if s[i] == '"' {
+				i++
+				for i < len(s) {
+					if s[i] == '"' {
+						i++
+						break
+					}
+					i++
+				}
+			}
+			if i == len(s) {
+				break
+			}
+			if s[i] == ' ' && s[i-1] == '\\' {
+				i++
+				continue
+			}
+			if i < len(s) && s[i] == ' ' {
+				break
+			}
+			i++
+		}
+		// 反斜杠加空格 表示空格，这里进行还原
+		env = append(env, key+strings.ReplaceAll(s[l:i], "\\ ", " "))
+		// 解析key
+		for i < len(s) && s[i] == ' ' {
+			i++
+		}
+		l = i
+		for i < len(s) && s[i] != '=' {
+			i++
+		}
+	}
+	return env
+
 }

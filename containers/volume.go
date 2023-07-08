@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path"
 	"strings"
 )
 
@@ -39,14 +40,14 @@ func getLowerDir(image string) string {
 	return strings.Join(lowDirs, ":")
 }
 func createUpperDir(containerBaseUrl string) {
-	upperDir := containerBaseUrl + "upper/"
+	upperDir := path.Join(containerBaseUrl, "upper")
 	if err := os.MkdirAll(upperDir, 0777); err != nil {
 		fmt.Printf("Mkdir upper layer dir %s error. %v", upperDir, err)
 	}
 
 }
 func createWorkDir(containerBaseUrl string) {
-	workDir := containerBaseUrl + "work/"
+	workDir := path.Join(containerBaseUrl, "work")
 	if err := os.MkdirAll(workDir, 0777); err != nil {
 		fmt.Printf("Mkdir work layer dir %s error. %v", workDir, err)
 	}
@@ -55,7 +56,7 @@ func createWorkDir(containerBaseUrl string) {
 //	mount -t overlay  overlay  \
 //	             -olowerdir=/lower,upperdir=/upper,workdir=/work  /merged
 func createMergedDir(containerBaseUrl string, lowDir string) string {
-	mergedDir := containerBaseUrl + "merged/"
+	mergedDir := path.Join(containerBaseUrl, "merged")
 	if err := os.MkdirAll(mergedDir, 0777); err != nil {
 		fmt.Printf("Mkdir merged layer dir %s error. %v", mergedDir, err)
 	}
@@ -94,11 +95,7 @@ func CreateVolume(info *ContainerInfo, mergedDir string, volume string, imageId 
 
 // MountVolume hostPath 挂载卷的位置 containerPath被挂载的路径（容器中）， mergedPath 容器宿主机工作路径
 func MountVolume(info *ContainerInfo, hostPath string, containerPath string, mergedPath string, anonymous bool) {
-	// mergedDir开头已经包含了 /，需要去掉多余的
-	if containerPath[0] == '/' {
-		containerPath = containerPath[1:]
-	}
-	containerPathInHost := mergedPath + containerPath
+	containerPathInHost := path.Join(mergedPath, containerPath)
 	exist, _ := PathExists(hostPath)
 	//创建路径
 	if !exist {
@@ -145,14 +142,14 @@ func PathExists(path string) (bool, error) {
 	return false, err
 }
 
-// DeleteWorkSpace 当删除容器时，会删除相关的目录 @Todo 删除容器中的volume挂载点
+// DeleteWorkSpace 当删除容器时，会删除相关的目录
 func DeleteWorkSpace(info *ContainerInfo) {
 	DeleteVolumeMount(info)
 	DeleteOverlayMountPoint(info.BaseUrl)
 }
 
 func DeleteOverlayMountPoint(containerBaseUrl string) {
-	mergedDir := fmt.Sprintf("%smerged/", containerBaseUrl)
+	mergedDir := path.Join(containerBaseUrl, "merged")
 	umount(mergedDir)
 }
 func DeleteVolumeMount(info *ContainerInfo) {
