@@ -141,12 +141,12 @@ func GetImageInfo(imageId string) (*ImageInfo, error) {
 	imageInfoFile := dir + ConfigName
 	content, err := os.ReadFile(imageInfoFile)
 	if err != nil {
-		fmt.Errorf("read image info %s error %v \n", imageInfoFile, err)
+		fmt.Printf("read image info %s error %v \n", imageInfoFile, err)
 		return nil, err
 	}
 	var info ImageInfo
 	if err := json.Unmarshal(content, &info); err != nil {
-		fmt.Errorf("json unmarshal error %v", err)
+		fmt.Printf("json unmarshal error %v\n", err)
 		return nil, err
 	}
 	return &info, nil
@@ -183,9 +183,19 @@ func BuildImage(tag string, dockerFile string) {
 		CreateTime: time.Now().Format("2006-01-02 15:04:05"),
 		WorkDir:    "/",
 	}
+	nameWithVersion := strings.Split(tag, ":")
+	info.Name = nameWithVersion[0]
+	if len(nameWithVersion) == 2 {
+		info.Version = nameWithVersion[1]
+	}
 	d := &DockerFile{
 		// 默认的工作目录
-		WorkDir: "/",
+		WorkDir:    "/",
+		Env:        []string{},
+		Volumes:    []string{},
+		CMD:        []string{},
+		EntryPoint: []string{},
+		Expose:     []string{},
 	}
 	for i := 0; i < len(lines); {
 		line := ""
@@ -238,15 +248,19 @@ func BuildImage(tag string, dockerFile string) {
 			continue
 		}
 	}
-	if true {
-		return
-	}
 	//创建镜像目录
-	if err := os.MkdirAll(path.Join(ImageLayerLocation, imageId), 0622); err != nil {
+	if err := os.MkdirAll(fmt.Sprintf(ImageLayerLocation, imageId), 0622); err != nil {
 		fmt.Printf("创建镜像目录失败: %v", err)
 		return
 	}
+	//信息拷贝到 镜像信息中
+	d.copy2ImageInfo(info)
+	//记录镜像的信息
 	recordImageInfo(info)
+	// 拷贝镜像的Upper内容到layer，新的镜像就完成了
+	Copy(path.Join(d.Info.BaseUrl, "upper"), fmt.Sprintf(ImageLayerLocation, imageId))
+	// 移除临时容器
+	RemoveContainer(d.Info.Id)
 }
 func (d *DockerFile) from(f string) {
 	f = strings.TrimPrefix(f, FROM)
@@ -343,6 +357,18 @@ func (d *DockerFile) volume(v string) {
 func (d *DockerFile) workDir(w string) {
 	w = strings.TrimPrefix(w, WORKDIR)
 	d.WorkDir = path.Clean(w)
+}
+
+func (d *DockerFile) copy2ImageInfo(info *ImageInfo) {
+	info.WorkDir = d.WorkDir
+	info.From = d.From
+	info.Env = d.Env
+	info.Volume = d.Volumes
+	info.CMD = d.CMD
+	info.EntryPoint = d.EntryPoint
+	info.EntryPointShellType = d.EntryPointShellType
+	info.CMDShellType = d.CMDShellType
+	info.Expose = d.Expose
 }
 
 // 判断是否是数组类型
@@ -492,4 +518,39 @@ func parseEnv(s string) []string {
 	}
 	return env
 
+}
+
+func ResolveImageId(idOrName string, justName bool) string {
+	infoList := GetImageInfoList()
+	// 先从名称匹配
+	var matched []string
+	for _, info := range infoList {
+		infoName := info.Name
+		if info.Version != "" {
+			infoName += ":" + info.Version
+		}
+		if infoName == idOrName {
+			matched = append(matched, info.Id)
+		}
+	}
+	if len(matched) > 1 {
+		return ""
+	}
+	if len(matched) == 1 {
+		return matched[0]
+	}
+	if !justName {
+		for _, info := range infoList {
+			if strings.HasPrefix(info.Id, idOrName) {
+				matched = append(matched, info.Id)
+			}
+		}
+		if (len(matched)) > 1 {
+			return ""
+		}
+		if len(matched) == 1 {
+			return matched[0]
+		}
+	}
+	return ""
 }

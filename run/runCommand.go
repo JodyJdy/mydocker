@@ -13,9 +13,8 @@ import (
 )
 
 func Run(tty bool, cmdArray []string, res *cgroups.ResourceConfig, volume string, containerName string, env []string, image string) {
-	command := containers.ResolveCmd(cmdArray, image, tty)
-	fmt.Println("要执行的命令")
-	fmt.Println(command)
+	imageId := containers.ResolveImageId(image, false)
+	command := containers.ResolveCmd(cmdArray, imageId, tty)
 	// 提前获取容器id
 	containerInfo := &containers.ContainerInfo{
 		Id:        containers.ContainerId(),
@@ -32,7 +31,7 @@ func Run(tty bool, cmdArray []string, res *cgroups.ResourceConfig, volume string
 	}
 	// 获取容器基础目录
 	containerInfo.BaseUrl = fmt.Sprintf(containers.ContainerInfoLocation, containerInfo.Id)
-	parent, writePipe := containers.NewParentProcess(containerInfo, tty, volume, env, image)
+	parent, writePipe := containers.NewParentProcess(containerInfo, tty, volume, env, imageId)
 	if parent == nil {
 		log.Println("New parent process error")
 		return
@@ -51,6 +50,7 @@ func Run(tty bool, cmdArray []string, res *cgroups.ResourceConfig, volume string
 		err := parent.Wait()
 		if err != nil {
 			fmt.Printf("等待父进程执行失败： %v\n", err)
+			return
 		}
 		// 删除工作空间，卷的挂载点
 		containers.DeleteWorkSpace(containerInfo)
