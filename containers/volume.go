@@ -9,13 +9,13 @@ import (
 )
 
 // NewWorkSpace 返回挂载后的merged目录
-func NewWorkSpace(info *ContainerInfo, volume string, image string) string {
-	lowDir := getLowerDir(image)
+func NewWorkSpace(info *ContainerInfo, volume string, imageId string) string {
+	lowDir := getLowerDir(imageId)
 	createUpperDir(info.BaseUrl)
 	createWorkDir(info.BaseUrl)
 	mergedDir := createMergedDir(info.BaseUrl, lowDir)
 	//创建卷的挂载
-	CreateVolume(info, mergedDir, volume, image)
+	CreateVolume(info, mergedDir, volume, imageId)
 	return mergedDir
 }
 
@@ -27,16 +27,19 @@ func getLowerDir(image string) string {
 	if err != nil {
 		fmt.Println("镜像不存在")
 	}
+	fmt.Println(info)
 	for {
 		//按层查找
 		if info.From != "" {
 			from := info.From
-			info, err = GetImageInfo(info.From)
+			info, err = GetImageInfo(ResolveImageId(info.From, false))
 			lowDirs = append(lowDirs, fmt.Sprintf(ImageLayerLocation, from))
 		} else {
 			break
 		}
 	}
+	fmt.Println("lowdir 是:")
+	fmt.Println(lowDirs)
 	return strings.Join(lowDirs, ":")
 }
 func createUpperDir(containerBaseUrl string) {
