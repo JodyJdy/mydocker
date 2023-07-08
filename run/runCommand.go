@@ -103,12 +103,11 @@ func Log(idOrName string) {
 	file, err := os.Open(logFileLocation)
 	defer file.Close()
 	if err != nil {
-		fmt.Errorf("log container open file %s error %v", logFileLocation, err)
 		return
 	}
 	content, err := io.ReadAll(file)
 	if err != nil {
-		fmt.Errorf("log container read file %s error %v", logFileLocation, err)
+		fmt.Printf("读取日志文件: %s 失败  %v", logFileLocation, err)
 		return
 	}
 	fmt.Fprint(os.Stdout, string(content))
