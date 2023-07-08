@@ -41,7 +41,7 @@ func (c *CpuSubSystem) Apply(cgroupPath string, pid int) error {
 func (c *CpuSubSystem) Remove(cgroupPath string) error {
 	// 删除cgroup相关的文件
 	if subsysCgroupPath, err := GetCgroupPath(c.Name(), cgroupPath, false); err == nil {
-		return os.RemoveAll(subsysCgroupPath)
+		return os.Remove(subsysCgroupPath)
 	} else {
 		return err
 	}

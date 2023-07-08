@@ -1,6 +1,7 @@
 package containers
 
 import (
+	"cgroups"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -105,6 +106,11 @@ func recordContainerInfo(info *ContainerInfo) {
 func DeleteContainerInfo(info *ContainerInfo) {
 	if err := os.RemoveAll(info.BaseUrl); err != nil {
 		fmt.Printf("删除目录：%s失败 %v", info.BaseUrl, err)
+	}
+	if info.SetCgroup {
+		// 删除cgroup 信息
+		cgroupManager := cgroups.NewCgroupManager(cgroups.Roout_Cgroup_Path + info.Id)
+		cgroupManager.Remove()
 	}
 }
 
@@ -254,4 +260,21 @@ func RemoveContainer(containerId string) {
 	}
 	DeleteWorkSpace(info)
 	DeleteContainerInfo(info)
+}
+func ProcessCgroup(info *ContainerInfo, pid int, res *cgroups.ResourceConfig) {
+	// 创建cgroup manager
+	cgroupManager := cgroups.NewCgroupManager(cgroups.Roout_Cgroup_Path + info.Id)
+	//defer cgroupManager.Remove()
+	//设置资源限制
+	err := cgroupManager.Set(res)
+	if err != nil {
+		_ = fmt.Errorf("设置资源限制失败: %v \n", err)
+		return
+	}
+	//将容器进程加入到cgroup中
+	err = cgroupManager.Apply(pid)
+	if err != nil {
+		_ = fmt.Errorf("添加容器进程到cgroup中失败: %v \n", err)
+		return
+	}
 }

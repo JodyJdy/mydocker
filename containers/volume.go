@@ -83,14 +83,10 @@ func CreateVolume(info *ContainerInfo, mergedDir string, volume string, imageId 
 	if err != nil {
 		fmt.Printf("获取镜像失败:%v", err)
 	}
-	fmt.Println("挂载匿名卷")
-	fmt.Println(len(imageInfo.Volume))
 	for _, v := range imageInfo.Volume {
-		fmt.Println(v)
 		// 生成卷id
 		vId := VolumeId()
 		volumeUrl := fmt.Sprintf(VolumeInfoLocation, vId)
-		fmt.Println(volumeUrl)
 		MountVolume(info, volumeUrl, v, mergedDir, true)
 	}
 

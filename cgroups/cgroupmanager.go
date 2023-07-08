@@ -2,6 +2,9 @@ package cgroups
 
 import "log"
 
+// cgroup根路径
+var Roout_Cgroup_Path = "mydocker-cgroup/"
+
 type CgroupManager struct {
 	// cgroup在hierarchy中的路径 相当于创建的cgroup目录相对于root cgroup目录的路径
 	Path string

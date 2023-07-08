@@ -40,7 +40,7 @@ func (m *MemorySubSystem) Apply(cgroupPath string, pid int) error {
 func (m *MemorySubSystem) Remove(cgroupPath string) error {
 	// 删除cgroup相关的文件
 	if subsysCgroupPath, err := GetCgroupPath(m.Name(), cgroupPath, false); err == nil {
-		return os.RemoveAll(subsysCgroupPath)
+		return os.Remove(subsysCgroupPath)
 	} else {
 		return err
 	}

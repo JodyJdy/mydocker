@@ -10,6 +10,7 @@ type ContainerInfo struct {
 	Volume     []VolumeInfo `json:"volume"`      // 容器的卷挂载
 	Image      string       `json:"image"`       //使用镜像
 	BaseUrl    string       `json:"baseUrl"`     // 容器的文件系统目录
+	SetCgroup  bool         `json:"setCgroup"`   //有无创建cgroup
 }
 
 type VolumeInfo struct {

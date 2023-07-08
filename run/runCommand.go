@@ -16,8 +16,9 @@ func Run(tty bool, cmdArray []string, res *cgroups.ResourceConfig, volume string
 	command := containers.ResolveCmd(cmdArray, image, tty)
 	// 提前获取容器id
 	containerInfo := &containers.ContainerInfo{
-		Id:      containers.ContainerId(),
-		Command: strings.Join(command.Cmds, " "),
+		Id:        containers.ContainerId(),
+		Command:   strings.Join(command.Cmds, " "),
+		SetCgroup: true,
 	}
 	// 获取容器基础目录
 	containerInfo.BaseUrl = fmt.Sprintf(containers.ContainerInfoLocation, containerInfo.Id)
@@ -29,34 +30,19 @@ func Run(tty bool, cmdArray []string, res *cgroups.ResourceConfig, volume string
 		return
 	}
 	if err := parent.Start(); err != nil {
-		fmt.Errorf("启动父进程失败:%v\n", err)
+		fmt.Printf("启动父进程失败:%v\n", err)
 	}
-	fmt.Printf("容器id:   %d", parent.Process.Pid)
+	fmt.Printf("容器id: %d", parent.Process.Pid)
 	// 记录容器信息
 	containers.RecordContainerInfo(containerInfo, parent.Process.Pid)
-	// 创建cgroup manager
-	cgroupManager := cgroups.NewCgroupManager("mydocker-cgroup")
-	defer cgroupManager.Remove()
-	//设置资源限制
-	err := cgroupManager.Set(res)
-	if err != nil {
-		_ = fmt.Errorf("设置资源限制失败: %v \n", err)
-		return
-	}
-	//将容器进程加入到cgroup中
-	err = cgroupManager.Apply(parent.Process.Pid)
-	if err != nil {
-		_ = fmt.Errorf("添加容器进程到cgroup中失败: %v \n", err)
-		return
-	}
+	containers.ProcessCgroup(containerInfo, parent.Process.Pid, res)
 	// 将命令写到管道里面
 	containers.SendInitCommand(command, writePipe)
 	if tty {
 		// 等待parent进程执行完毕
-		err = parent.Wait()
+		err := parent.Wait()
 		if err != nil {
-			_ = fmt.Errorf("等待父进程执行失败： %v", err)
-			return
+			fmt.Printf("等待父进程执行失败： %v\n", err)
 		}
 		// 删除工作空间，卷的挂载点
 		containers.DeleteWorkSpace(containerInfo)

@@ -1,7 +1,6 @@
 package containers
 
 import (
-	"cgroups"
 	"fmt"
 	"log"
 	"os"
@@ -23,25 +22,6 @@ func BuildFrom(image string) string {
 	}
 	// 记录容器信息
 	RecordContainerInfo(info, parent.Process.Pid)
-	// 创建cgroup manager
-	cgroupManager := cgroups.NewCgroupManager("mydocker-cgroup")
-	defer cgroupManager.Remove()
-	//设置资源限制
-	err := cgroupManager.Set(&cgroups.ResourceConfig{
-		MemoryLimit: "",
-		CpuSet:      "",
-		CpuShare:    "",
-	})
-	if err != nil {
-		_ = fmt.Errorf("设置资源限制失败: %v \n", err)
-		return ""
-	}
-	//将容器进程加入到cgroup中
-	err = cgroupManager.Apply(parent.Process.Pid)
-	if err != nil {
-		_ = fmt.Errorf("添加容器进程到cgroup中失败: %v \n", err)
-		return ""
-	}
 	// 将命令写到管道里面
 	SendInitCommand(nil, writePipe)
 	os.Exit(-1)
