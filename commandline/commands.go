@@ -62,9 +62,8 @@ var RunCommand = cli.Command{
 			Usage: "set environment",
 		},
 		cli.StringFlag{
-			Name: "image",
-			// @Todo 先使用镜像id，后期优化
-			Usage: "image id",
+			Name:  "image",
+			Usage: "镜像id前缀 或者 镜像名称",
 		},
 	},
 	// 具体的执行命令

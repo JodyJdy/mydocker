@@ -85,3 +85,17 @@ func ResolveCmd(cmdArray []string, imageId string, tty bool) *CommandArray {
 	return &result
 
 }
+
+// ReadUserCommand 从管道里面读取命令
+func ReadUserCommand() *CommandArray {
+	// 1个进程默认有三个文件描述符， 标准输入，标准输出，标准错误，文件描述符分别是 0,1,2
+	// 当前读取的文件是第四个，文件描述符为3
+	pipe := os.NewFile(uintptr(3), "pipe")
+	command := new(CommandArray)
+	return LoadCommand(command, pipe)
+}
+
+// SendInitCommand 将命令行信息写入到管道文件里面
+func SendInitCommand(cmd *CommandArray, writePipe *os.File) {
+	SaveCommand(cmd, writePipe)
+}

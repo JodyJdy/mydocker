@@ -42,7 +42,7 @@ func Run(tty bool, cmdArray []string, res *cgroups.ResourceConfig, volume string
 	fmt.Printf("容器id: %d", parent.Process.Pid)
 	// 记录容器信息
 	containers.RecordContainerInfo(containerInfo, parent.Process.Pid)
-	containers.ProcessCgroup(containerInfo, parent.Process.Pid, res)
+	cgroups.ProcessCgroup(containerInfo.Id, parent.Process.Pid, res)
 	// 将命令写到管道里面
 	containers.SendInitCommand(command, writePipe)
 	if tty {

@@ -38,34 +38,32 @@ func getLowerDir(image string) string {
 			break
 		}
 	}
-	fmt.Println("lowdir 是:")
-	fmt.Println(lowDirs)
 	return strings.Join(lowDirs, ":")
 }
 func createUpperDir(containerBaseUrl string) {
-	upperDir := path.Join(containerBaseUrl, "upper")
+	upperDir := path.Join(containerBaseUrl, UPPER)
 	if err := os.MkdirAll(upperDir, 0777); err != nil {
 		fmt.Printf("Mkdir upper layer dir %s error. %v", upperDir, err)
 	}
 
 }
 func createWorkDir(containerBaseUrl string) {
-	workDir := path.Join(containerBaseUrl, "work")
+	workDir := path.Join(containerBaseUrl, WORK)
 	if err := os.MkdirAll(workDir, 0777); err != nil {
 		fmt.Printf("Mkdir work layer dir %s error. %v", workDir, err)
 	}
 }
 
-//	mount -t overlay  overlay  \
-//	             -olowerdir=/lower,upperdir=/upper,workdir=/work  /merged
+// 创建 overlay文件系统的挂载
 func createMergedDir(containerBaseUrl string, lowDir string) string {
-	mergedDir := path.Join(containerBaseUrl, "merged")
+	mergedDir := path.Join(containerBaseUrl, MERGED)
 	if err := os.MkdirAll(mergedDir, 0777); err != nil {
 		fmt.Printf("Mkdir merged layer dir %s error. %v", mergedDir, err)
 	}
 	// 处理卷挂载
-	dirs := fmt.Sprintf("lowerdir=%s,upperdir=%s,workdir=%s", lowDir, containerBaseUrl+"upper/", containerBaseUrl+"work/")
-	cmd := exec.Command("mount", "-t", "overlay", "-o", dirs, "none", mergedDir)
+	dirs := fmt.Sprintf(OVERLAY_PARAM, lowDir, path.Join(containerBaseUrl, UPPER),
+		path.Join(containerBaseUrl, WORK))
+	cmd := exec.Command("mount", "-t", OVERLAY, "-o", dirs, "none", mergedDir)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
@@ -152,7 +150,7 @@ func DeleteWorkSpace(info *ContainerInfo) {
 }
 
 func DeleteOverlayMountPoint(containerBaseUrl string) {
-	mergedDir := path.Join(containerBaseUrl, "merged")
+	mergedDir := path.Join(containerBaseUrl, MERGED)
 	umount(mergedDir)
 }
 func DeleteVolumeMount(info *ContainerInfo) {

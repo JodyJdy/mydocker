@@ -27,7 +27,6 @@ func BuildBaseImage(imageTarUrl string) {
 		fmt.Printf("创建目录失败 %s  %v\n", BaseImageLayerLocation, err)
 		return
 	}
-
 	storeBaseImageInfo()
 	// 解压文件，tar包
 	if _, err := exec.Command("tar", "--strip-components", "1", "-xvf", imageTarUrl, "-C", BaseImageLayerLocation).CombinedOutput(); err != nil {
@@ -68,7 +67,7 @@ func recordImageInfo(info *ImageInfo) {
 	if err := os.MkdirAll(dirUrl, 0622); err != nil {
 		fmt.Printf("创建路径%s 失败: %v", dirUrl, err)
 	}
-	fileName := dirUrl + ConfigName
+	fileName := dirUrl + ImageConfigName
 	//删除旧的文件，如果存在的话
 	_ = os.Remove(fileName)
 	// 创建文件
@@ -123,7 +122,7 @@ func GetImageInfoList() []*ImageInfo {
 
 func ReadImageInfo(imageDir os.DirEntry) (*ImageInfo, error) {
 	dir := fmt.Sprintf(ImageInfoLocation, imageDir.Name())
-	imageInfoDir := dir + ConfigName
+	imageInfoDir := dir + ImageConfigName
 	content, err := os.ReadFile(imageInfoDir)
 	if err != nil {
 		fmt.Errorf("read image Dir %s error %v", imageInfoDir, err)
@@ -138,7 +137,7 @@ func ReadImageInfo(imageDir os.DirEntry) (*ImageInfo, error) {
 }
 func GetImageInfo(imageId string) (*ImageInfo, error) {
 	dir := fmt.Sprintf(ImageInfoLocation, imageId)
-	imageInfoFile := dir + ConfigName
+	imageInfoFile := dir + ImageConfigName
 	content, err := os.ReadFile(imageInfoFile)
 	if err != nil {
 		fmt.Printf("read image info %s error %v \n", imageInfoFile, err)
@@ -152,7 +151,7 @@ func GetImageInfo(imageId string) (*ImageInfo, error) {
 	return &info, nil
 }
 
-func ReadDockerFile(dockerFile string) []string {
+func readDockerFile(dockerFile string) []string {
 	if !FileExist(dockerFile) {
 		fmt.Printf("docker file 不存在: %s", dockerFile)
 		return []string{}
@@ -168,88 +167,63 @@ func ReadDockerFile(dockerFile string) []string {
 		}
 		lines = append(lines, string(s))
 	}
-	return lines
+	// 合并多行
+	var resultLine []string
+	line := ""
+	for _, tempLine := range lines {
+		if tempLine == "" {
+			continue
+		}
+		if tempLine[len(tempLine)-1] != '\\' {
+			resultLine = append(resultLine, line+tempLine)
+			line = ""
+		} else {
+			line += tempLine[0 : len(tempLine)-1]
+		}
+	}
+	if line != "" {
+		resultLine = append(resultLine, line)
+	}
+	return resultLine
 }
 func BuildImage(tag string, dockerFile string) {
-	lines := ReadDockerFile(dockerFile)
+	lines := readDockerFile(dockerFile)
 	if len(lines) == 0 {
 		fmt.Println("dockerfile解析失败")
 		return
 	}
-	//获取镜像id
-	imageId := ImageId()
-	info := &ImageInfo{
-		Id:         imageId,
-		CreateTime: time.Now().Format("2006-01-02 15:04:05"),
-		WorkDir:    "/",
-	}
-	nameWithVersion := strings.Split(tag, ":")
-	info.Name = nameWithVersion[0]
-	if len(nameWithVersion) == 2 {
-		info.Version = nameWithVersion[1]
-	}
-	d := &DockerFile{
-		// 默认的工作目录
-		WorkDir:    "/",
-		Env:        []string{},
-		Volumes:    []string{},
-		CMD:        []string{},
-		EntryPoint: []string{},
-		Expose:     []string{},
-	}
-	for i := 0; i < len(lines); {
-		line := ""
-		// 处理多行的情况
-		for i < len(lines) {
-			tempLine := lines[i]
-			i++
-			if tempLine[len(tempLine)-1] == '\\' {
-				line += tempLine[0 : len(tempLine)-1]
-			} else {
-				line += tempLine
-				break
-			}
-		}
-		if line == "" {
-			continue
-		}
+	// 初始化 镜像信息
+	info := initImageInfo(tag)
+	// 初始化 dockerfile信息
+	d := initDockerFile()
+	for _, line := range lines {
 		switch {
 		case strings.HasPrefix(line, FROM):
 			d.from(line)
-			break
 		case strings.HasPrefix(line, RUN):
 			d.run(line)
-			break
 		case strings.HasPrefix(line, ADD):
 			d.add(line)
-			break
 		case strings.HasPrefix(line, COPY):
 			d.copy(line)
-			break
 		case strings.HasPrefix(line, EXPOSE):
 			d.expose(line)
-			break
 		case strings.HasPrefix(line, ENV):
 			d.env(line)
-			break
 		case strings.HasPrefix(line, CMD):
 			d.cmd(line)
-			break
 		case strings.HasPrefix(line, ENTRYPOINT):
 			d.entrypoint(line)
-			break
 		case strings.HasPrefix(line, VOLUME):
 			d.volume(line)
-			break
 		case strings.HasPrefix(line, WORKDIR):
 			d.workDir(line)
-			break
 		default:
 			continue
 		}
 	}
 	//创建镜像目录
-	if err := os.MkdirAll(fmt.Sprintf(ImageLayerLocation, imageId), 0622); err != nil {
+	if err := os.MkdirAll(fmt.Sprintf(ImageLayerLocation, info.Id), 0622); err != nil {
 		fmt.Printf("创建镜像目录失败: %v", err)
 		return
 	}
@@ -258,9 +232,36 @@ func BuildImage(tag string, dockerFile string) {
 	//记录镜像的信息
 	recordImageInfo(info)
 	// 拷贝镜像的Upper内容到layer，新的镜像就完成了
-	Copy(path.Join(d.Info.BaseUrl, "upper"), fmt.Sprintf(ImageLayerLocation, imageId))
+	Copy(path.Join(d.Info.BaseUrl, "upper"), fmt.Sprintf(ImageLayerLocation, info.Id))
 	// 移除临时容器
 	RemoveContainer(d.Info.Id)
+}
+func initImageInfo(tag string) *ImageInfo {
+	//获取镜像id
+	imageId := ImageId()
+	info := &ImageInfo{
+		Id:         imageId,
+		CreateTime: time.Now().Format("2006-01-02 15:04:05"),
+		WorkDir:    "/",
+	}
+	tagSplits := strings.Split(tag, ":")
+	info.Name = tagSplits[0]
+	if len(tagSplits) == 2 {
+		info.Version = tagSplits[1]
+	}
+	return info
+}
+func initDockerFile() *DockerFile {
+	return &DockerFile{
+		// 默认的工作目录
+		WorkDir:    "/",
+		Env:        []string{},
+		Volumes:    []string{},
+		CMD:        []string{},
+		EntryPoint: []string{},
+		Expose:     []string{},
+	}
+
 }
 func (d *DockerFile) from(f string) {
 	f = strings.TrimPrefix(f, FROM)

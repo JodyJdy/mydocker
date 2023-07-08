@@ -26,7 +26,7 @@ var (
 	BaseImageUrl           = AllImageLocation + "base/"
 	BaseImageLayerLocation = BaseImageUrl + "layer/"
 	// ImageConfigName 存储镜像信息
-	ConfigName = "config.json"
+	ImageConfigName = "config.json"
 )
 
 // DockerFile 解析DockerFile,解析时，有些是直接执行的，有些是需要留档的

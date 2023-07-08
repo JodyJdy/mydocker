@@ -4,7 +4,6 @@ import (
 	"cgroups"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"strconv"
@@ -19,7 +18,7 @@ import (
 func NewParentProcess(info *ContainerInfo, tty bool, volume string, env []string, imageId string) (*exec.Cmd, *os.File) {
 	readPipe, writePipe, err := NewPipe()
 	if err != nil {
-		_ = fmt.Errorf("new pipe error %v", err)
+		_ = fmt.Errorf("创建管道失败%v", err)
 		return nil, nil
 	}
 	// 调用mydocker的 init命令， 执行command
@@ -86,7 +85,7 @@ func recordContainerInfo(info *ContainerInfo) {
 	if err := os.MkdirAll(dirUrl, 0622); err != nil {
 		fmt.Printf("创建路径%s 失败: %v", dirUrl, err)
 	}
-	fileName := dirUrl + ConfigName
+	fileName := dirUrl + ContainerConfigName
 	//删除旧的文件，如果存在的话
 	_ = os.Remove(fileName)
 	// 创建文件
@@ -118,9 +117,9 @@ func ListContainerInfo() {
 	containers := getAllContainerInfo()
 	// 格式化并输出
 	w := tabwriter.NewWriter(os.Stdout, 12, 1, 3, ' ', 0)
-	fmt.Fprint(w, "ID\tNAME\tPID\tSTATUS\tCOMMAND\tCREATED\n")
+	_, _ = fmt.Fprint(w, "ID\tNAME\tPID\tSTATUS\tCOMMAND\tCREATED\n")
 	for _, item := range containers {
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n",
+		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n",
 			item.Id,
 			item.Name,
 			item.Pid,
@@ -129,7 +128,7 @@ func ListContainerInfo() {
 			item.CreateTime)
 	}
 	if err := w.Flush(); err != nil {
-		fmt.Printf("Flush error %v\n", err)
+		fmt.Printf("flush 失败 %v\n", err)
 		return
 	}
 }
@@ -137,7 +136,7 @@ func getAllContainerInfo() []*ContainerInfo {
 	// 返回所有容器的目录
 	containerDirs, err := os.ReadDir(AllContainerLocation)
 	if err != nil {
-		fmt.Errorf("read dir %s error %v", AllContainerLocation, err)
+		fmt.Printf("读取目录:%s 失败 %v\n", AllContainerLocation, err)
 		return nil
 	}
 	// 记录所有容器的对象
@@ -145,7 +144,7 @@ func getAllContainerInfo() []*ContainerInfo {
 	for _, containerDir := range containerDirs {
 		tmpContainer, err := ReadContainerInfo(containerDir)
 		if err != nil {
-			fmt.Errorf("Get container info error %v", err)
+			fmt.Printf("获取容器信息失败%v\n", err)
 			continue
 		}
 		containers = append(containers, tmpContainer)
@@ -154,30 +153,30 @@ func getAllContainerInfo() []*ContainerInfo {
 }
 func ReadContainerInfo(containerDir os.DirEntry) (*ContainerInfo, error) {
 	dir := fmt.Sprintf(ContainerInfoLocation, containerDir.Name())
-	containerInfoFile := dir + ConfigName
+	containerInfoFile := dir + ContainerConfigName
 	content, err := os.ReadFile(containerInfoFile)
 	if err != nil {
-		fmt.Errorf("read containerDir %s error %v", containerInfoFile, err)
+		fmt.Printf("读取容器%s 失败 %v", containerInfoFile, err)
 		return nil, err
 	}
 	var containerInfo ContainerInfo
 	if err := json.Unmarshal(content, &containerInfo); err != nil {
-		fmt.Errorf("json unmarshal error %v", err)
+		fmt.Printf("json反序列化失败 %v\n", err)
 		return nil, err
 	}
 	return &containerInfo, nil
 }
 func GetContainerInfo(containerId string) (*ContainerInfo, error) {
 	dir := fmt.Sprintf(ContainerInfoLocation, containerId)
-	containerInfoFile := dir + ConfigName
+	containerInfoFile := dir + ContainerConfigName
 	content, err := os.ReadFile(containerInfoFile)
 	if err != nil {
-		fmt.Errorf("read containerDir %s error %v", containerInfoFile, err)
+		fmt.Printf("读取容器失败%s :%v\n", containerInfoFile, err)
 		return nil, err
 	}
 	var containerInfo ContainerInfo
 	if err := json.Unmarshal(content, &containerInfo); err != nil {
-		fmt.Errorf("json unmarshal error %v", err)
+		fmt.Printf("json反序列化失败 %v\n", err)
 		return nil, err
 	}
 	return &containerInfo, nil
@@ -223,9 +222,9 @@ func ExecContainer(containerId string, cmdArray []string) {
 // 获取进程环境变量
 func getEnvsByPid(pid string) []string {
 	path := fmt.Sprintf("/proc/%s/environ", pid)
-	contentBytes, err := ioutil.ReadFile(path)
+	contentBytes, err := os.ReadFile(path)
 	if err != nil {
-		_ = fmt.Errorf("read file %s error %v\n", path, err)
+		_ = fmt.Errorf("读取文件 :%s 失败 %v\n", path, err)
 		return nil
 	}
 	//env split by \u0000
@@ -264,23 +263,6 @@ func RemoveContainer(containerId string) {
 	}
 	DeleteWorkSpace(info)
 	DeleteContainerInfo(info)
-}
-func ProcessCgroup(info *ContainerInfo, pid int, res *cgroups.ResourceConfig) {
-	// 创建cgroup manager
-	cgroupManager := cgroups.NewCgroupManager(cgroups.Roout_Cgroup_Path + info.Id)
-	//defer cgroupManager.Remove()
-	//设置资源限制
-	err := cgroupManager.Set(res)
-	if err != nil {
-		_ = fmt.Errorf("设置资源限制失败: %v \n", err)
-		return
-	}
-	//将容器进程加入到cgroup中
-	err = cgroupManager.Apply(pid)
-	if err != nil {
-		_ = fmt.Errorf("添加容器进程到cgroup中失败: %v \n", err)
-		return
-	}
 }
 
 func ResolveContainerId(idOrName string, justName bool) string {

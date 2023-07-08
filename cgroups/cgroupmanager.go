@@ -1,6 +1,9 @@
 package cgroups
 
-import "log"
+import (
+	"fmt"
+	"log"
+)
 
 // cgroup根路径
 var Roout_Cgroup_Path = "mydocker-cgroup/"
@@ -43,5 +46,23 @@ func (c *CgroupManager) Remove() {
 			log.Fatalf("remove cgroup fail %v", err)
 			return
 		}
+	}
+}
+
+func ProcessCgroup(containerId string, pid int, res *ResourceConfig) {
+	// 创建cgroup manager
+	cgroupManager := NewCgroupManager(Roout_Cgroup_Path + containerId)
+	//defer cgroupManager.Remove()
+	//设置资源限制
+	err := cgroupManager.Set(res)
+	if err != nil {
+		_ = fmt.Errorf("设置资源限制失败: %v \n", err)
+		return
+	}
+	//将容器进程加入到cgroup中
+	err = cgroupManager.Apply(pid)
+	if err != nil {
+		_ = fmt.Errorf("添加容器进程到cgroup中失败: %v \n", err)
+		return
 	}
 }
