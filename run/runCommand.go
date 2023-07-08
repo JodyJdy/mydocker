@@ -20,6 +20,13 @@ func Run(tty bool, cmdArray []string, res *cgroups.ResourceConfig, volume string
 		Command:   strings.Join(command.Cmds, " "),
 		SetCgroup: true,
 	}
+	if containerName != "" {
+		if containers.ResolveContainerId(containerName, true) != "" {
+			fmt.Printf("镜像名称重复 %s\n", containerName)
+			return
+		}
+		containerInfo.Name = containerName
+	}
 	// 获取容器基础目录
 	containerInfo.BaseUrl = fmt.Sprintf(containers.ContainerInfoLocation, containerInfo.Id)
 	fmt.Println("打印命令")
@@ -91,7 +98,12 @@ func Ps() {
 }
 
 // Log 显示container的日志，先按照容器id打开
-func Log(containerId string) {
+func Log(idOrName string) {
+	containerId := containers.ResolveContainerId(idOrName, false)
+	if containerId == "" {
+		fmt.Printf("无法根据提供的容器标识定位到容器\n")
+		return
+	}
 	dirURL := fmt.Sprintf(containers.ContainerInfoLocation, containerId)
 	logFileLocation := dirURL + containers.ContainerLogName
 	file, err := os.Open(logFileLocation)
@@ -109,16 +121,31 @@ func Log(containerId string) {
 }
 
 // Exec 进入容器
-func Exec(containerId string, cmdArray []string) {
+func Exec(idOrName string, cmdArray []string) {
+	containerId := containers.ResolveContainerId(idOrName, false)
+	if containerId == "" {
+		fmt.Printf("无法根据提供的容器标识定位到容器\n")
+		return
+	}
 	containers.ExecContainer(containerId, cmdArray)
 }
 
 // Stop 停止容器
-func Stop(containerId string) {
+func Stop(idOrName string) {
+	containerId := containers.ResolveContainerId(idOrName, false)
+	if containerId == "" {
+		fmt.Printf("无法根据提供的容器标识定位到容器\n")
+		return
+	}
 	containers.StopContainer(containerId)
 }
 
 // Remove 删除容器
-func Remove(containerId string) {
+func Remove(idOrName string) {
+	containerId := containers.ResolveContainerId(idOrName, false)
+	if containerId == "" {
+		fmt.Printf("无法根据提供的容器标识定位到容器\n")
+		return
+	}
 	containers.RemoveContainer(containerId)
 }

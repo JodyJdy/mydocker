@@ -115,22 +115,8 @@ func DeleteContainerInfo(info *ContainerInfo) {
 }
 
 func ListContainerInfo() {
-	// 返回所有容器的目录
-	containerDirs, err := os.ReadDir(AllContainerLocation)
-	if err != nil {
-		fmt.Errorf("read dir %s error %v", AllContainerLocation, err)
-		return
-	}
 	// 记录所有容器的对象
-	var containers []*ContainerInfo
-	for _, containerDir := range containerDirs {
-		tmpContainer, err := ReadContainerInfo(containerDir)
-		if err != nil {
-			fmt.Errorf("Get container info error %v", err)
-			continue
-		}
-		containers = append(containers, tmpContainer)
-	}
+	containers := getAllContainerInfo()
 	// 格式化并输出
 	w := tabwriter.NewWriter(os.Stdout, 12, 1, 3, ' ', 0)
 	fmt.Fprint(w, "ID\tNAME\tPID\tSTATUS\tCOMMAND\tCREATED\n")
@@ -144,9 +130,28 @@ func ListContainerInfo() {
 			item.CreateTime)
 	}
 	if err := w.Flush(); err != nil {
-		fmt.Errorf("Flush error %v", err)
+		fmt.Printf("Flush error %v\n", err)
 		return
 	}
+}
+func getAllContainerInfo() []*ContainerInfo {
+	// 返回所有容器的目录
+	containerDirs, err := os.ReadDir(AllContainerLocation)
+	if err != nil {
+		fmt.Errorf("read dir %s error %v", AllContainerLocation, err)
+		return nil
+	}
+	// 记录所有容器的对象
+	var containers []*ContainerInfo
+	for _, containerDir := range containerDirs {
+		tmpContainer, err := ReadContainerInfo(containerDir)
+		if err != nil {
+			fmt.Errorf("Get container info error %v", err)
+			continue
+		}
+		containers = append(containers, tmpContainer)
+	}
+	return containers
 }
 func ReadContainerInfo(containerDir os.DirEntry) (*ContainerInfo, error) {
 	dir := fmt.Sprintf(ContainerInfoLocation, containerDir.Name())
@@ -277,4 +282,35 @@ func ProcessCgroup(info *ContainerInfo, pid int, res *cgroups.ResourceConfig) {
 		_ = fmt.Errorf("添加容器进程到cgroup中失败: %v \n", err)
 		return
 	}
+}
+
+func ResolveContainerId(idOrName string, justName bool) string {
+	infoList := getAllContainerInfo()
+	// 先从名称匹配
+	var matched []string
+	for _, info := range infoList {
+		if info.Name == idOrName {
+			matched = append(matched, info.Id)
+		}
+	}
+	if len(matched) > 1 {
+		return ""
+	}
+	if len(matched) == 1 {
+		return matched[0]
+	}
+	if !justName {
+		for _, info := range infoList {
+			if strings.HasPrefix(info.Id, idOrName) {
+				matched = append(matched, info.Id)
+			}
+		}
+		if (len(matched)) > 1 {
+			return ""
+		}
+		if len(matched) == 1 {
+			return matched[0]
+		}
+	}
+	return ""
 }

@@ -148,7 +148,7 @@ var LogCommand = cli.Command{
 	Usage: "打印容器日志",
 	Action: func(context *cli.Context) error {
 		if len(context.Args()) < 1 {
-			return fmt.Errorf("缺少容器名称")
+			return fmt.Errorf("缺少容器名称或者标识")
 		}
 		run.Log(context.Args()[0])
 		return nil
@@ -166,7 +166,7 @@ var ExecCommand = cli.Command{
 			return nil
 		}
 		if len(context.Args()) < 2 {
-			return fmt.Errorf("缺少容器id或者执行命令\n")
+			return fmt.Errorf("缺少容器id标识或者执行命令\n")
 		}
 		containerId := context.Args()[0]
 		//获取执行的命令
@@ -185,7 +185,7 @@ var StopCommand = cli.Command{
 	Usage: "停止容器",
 	Action: func(context *cli.Context) error {
 		if len(context.Args()) < 1 {
-			return fmt.Errorf("缺少容器名称")
+			return fmt.Errorf("缺少容器名称或标识")
 		}
 		run.Stop(context.Args()[0])
 		return nil
@@ -196,7 +196,7 @@ var RemoveCommand = cli.Command{
 	Usage: "删除容器",
 	Action: func(context *cli.Context) error {
 		if len(context.Args()) < 1 {
-			return fmt.Errorf("缺少容器名称")
+			return fmt.Errorf("缺少容器名称或标识")
 		}
 		run.Remove(context.Args()[0])
 		return nil
