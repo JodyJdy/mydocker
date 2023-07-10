@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/urfave/cli"
 	"log"
+	"networks"
 	"nsenter"
 	"os"
 	"run"
@@ -16,7 +17,7 @@ func StartCommands() {
 	app.Name = "mydocker"
 	app.Usage = "mydocker is a simple container runtime implementation"
 	app.Commands = []cli.Command{RunCommand, InitCommand, CommitCommand, PsCommand, LogCommand,
-		ExecCommand, StopCommand, RemoveCommand, BuildBaseImageCommand, ImagesCommand, BuildImageCommand}
+		ExecCommand, StopCommand, RemoveCommand, BuildBaseImageCommand, ImagesCommand, BuildImageCommand, NetworkCommand}
 	err := app.Run(os.Args)
 	if err != nil {
 		log.Fatalln(err)
@@ -65,6 +66,15 @@ var RunCommand = cli.Command{
 			Name:  "image",
 			Usage: "镜像id前缀 或者 镜像名称",
 		},
+
+		cli.StringFlag{
+			Name:  "net",
+			Usage: "container network",
+		},
+		cli.StringSliceFlag{
+			Name:  "p",
+			Usage: "port mapping",
+		},
 	},
 	// 具体的执行命令
 	Action: func(context *cli.Context) error {
@@ -93,11 +103,15 @@ var RunCommand = cli.Command{
 		envSlice := context.StringSlice("e")
 		// 获取使用的镜像
 		imageId := context.String("image")
+		// 端口映射
+		portmapping := context.StringSlice("p")
+		// 所在的网络
+		network := context.String("net")
 		if imageId == "" {
 			fmt.Println("镜像id不能为空")
 			return nil
 		}
-		run.Run(tty, cmdArray, res, volume, containerName, envSlice, imageId)
+		run.Run(tty, cmdArray, res, volume, containerName, envSlice, imageId, portmapping, network)
 		return nil
 	},
 }
@@ -236,5 +250,60 @@ var BuildImageCommand = cli.Command{
 	},
 	Action: func(context *cli.Context) {
 		containers.BuildImage(context.String("t"), context.String("f"))
+	},
+}
+var NetworkCommand = cli.Command{
+	Name:  "network",
+	Usage: "创建容器网络",
+	Subcommands: []cli.Command{
+		{
+			Name:  "create",
+			Usage: "创建网络",
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:  "driver",
+					Usage: "创建网络驱动",
+				},
+				cli.StringFlag{
+					Name:  "subnet",
+					Usage: "subnet cidr",
+				},
+			},
+			Action: func(context *cli.Context) error {
+				if len(context.Args()) < 1 {
+					return fmt.Errorf("Missing network name")
+				}
+				networks.Init()
+				err := networks.CreateNetwork(context.String("driver"), context.String("subnet"), context.Args()[0])
+				if err != nil {
+					return fmt.Errorf("create network error: %+v", err)
+				}
+				return nil
+			},
+		},
+		{
+			Name:  "list",
+			Usage: "list container network",
+			Action: func(context *cli.Context) error {
+				networks.Init()
+				networks.ListNetwork()
+				return nil
+			},
+		},
+		{
+			Name:  "remove",
+			Usage: "remove container network",
+			Action: func(context *cli.Context) error {
+				if len(context.Args()) < 1 {
+					return fmt.Errorf("Missing network name")
+				}
+				networks.Init()
+				err := networks.DeleteNetwork(context.Args()[0])
+				if err != nil {
+					return fmt.Errorf("remove network error: %+v", err)
+				}
+				return nil
+			},
+		},
 	},
 }

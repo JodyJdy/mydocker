@@ -1,16 +1,18 @@
 package containers
 
 type ContainerInfo struct {
-	Pid        string       `json:"pid"`         //容器的init进程在宿主机上的进程id
-	Id         string       `json:"id"`          //容器id
-	Name       string       `json:"name"`        //容器name
-	Command    string       `json:"command"`     //容器内init进程的运行命令
-	CreateTime string       `json:"create_time"` //创建时间
-	Status     string       `json:"status"`      //容器的状态
-	Volume     []VolumeInfo `json:"volume"`      // 容器的卷挂载
-	Image      string       `json:"image"`       //使用镜像
-	BaseUrl    string       `json:"baseUrl"`     // 容器的文件系统目录
-	SetCgroup  bool         `json:"setCgroup"`   //有无创建cgroup
+	Pid         string       `json:"pid"`         //容器的init进程在宿主机上的进程id
+	Id          string       `json:"id"`          //容器id
+	Name        string       `json:"name"`        //容器name
+	Command     string       `json:"command"`     //容器内init进程的运行命令
+	CreateTime  string       `json:"create_time"` //创建时间
+	Status      string       `json:"status"`      //容器的状态
+	Volume      []VolumeInfo `json:"volume"`      // 容器的卷挂载
+	Image       string       `json:"image"`       //使用镜像
+	BaseUrl     string       `json:"baseUrl"`     // 容器的文件系统目录
+	SetCgroup   bool         `json:"setCgroup"`   //有无创建cgroup
+	PortMapping []string     `json:"portMapping"` // 端口映射
+	net         string       `json:"net"`         // 端口
 }
 
 type VolumeInfo struct {

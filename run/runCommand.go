@@ -6,21 +6,23 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"networks"
 	"os"
 	"os/exec"
 	"strings"
 	"syscall"
 )
 
-func Run(tty bool, cmdArray []string, res *cgroups.ResourceConfig, volume string, containerName string, env []string, image string) {
+func Run(tty bool, cmdArray []string, res *cgroups.ResourceConfig, volume string, containerName string, env []string, image string, portMapping []string, net string) {
 	imageId := containers.ResolveImageId(image, false)
 	command := containers.ResolveCmd(cmdArray, imageId, tty)
 	// 提前获取容器id
 	containerInfo := &containers.ContainerInfo{
-		Id:        containers.ContainerId(),
-		Command:   strings.Join(command.Cmds, " "),
-		Status:    containers.Running,
-		SetCgroup: true,
+		Id:          containers.ContainerId(),
+		Command:     strings.Join(command.Cmds, " "),
+		Status:      containers.Running,
+		SetCgroup:   true,
+		PortMapping: portMapping,
 	}
 	if containerName != "" {
 		if containers.ResolveContainerId(containerName, true) != "" {
@@ -43,6 +45,14 @@ func Run(tty bool, cmdArray []string, res *cgroups.ResourceConfig, volume string
 	// 记录容器信息
 	containers.RecordContainerInfo(containerInfo, parent.Process.Pid)
 	cgroups.ProcessCgroup(containerInfo.Id, parent.Process.Pid, res)
+
+	if net != "" {
+		networks.Init()
+		if err := networks.Connect(net, containerInfo); err != nil {
+			fmt.Printf("连接网络失败%v\n", err)
+			return
+		}
+	}
 	// 将命令写到管道里面
 	containers.SendInitCommand(command, writePipe)
 	if tty {
