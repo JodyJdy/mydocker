@@ -7,7 +7,6 @@ import (
 	"github.com/vishvananda/netns"
 	"net"
 	"os"
-	"os/exec"
 	"path"
 	"path/filepath"
 	"runtime"
@@ -175,24 +174,8 @@ func configEndpointIpAddressAndRoute(ep *EndPoint, cinfo *containers.ContainerIn
 	return nil
 }
 
+// @todo 端口生效没有效果，解决方式，重写一个端口映射
 func configPortMapping(ep *EndPoint) error {
-	// 配置访问外部网络
-	// 配置端口映射
-	for _, pm := range ep.PortMapping {
-		portMapping := strings.Split(pm, ":")
-		if len(portMapping) != 2 {
-			fmt.Printf("端口映射格式错误, %v", pm)
-			continue
-		}
-		iptablesCmd := fmt.Sprintf("-t nat -A PREROUTING -p tcp -m tcp --dport %s -j DNAT --to-destination %s:%s",
-			portMapping[0], ep.IPAddress.String(), portMapping[1])
-		cmd := exec.Command("iptables", strings.Split(iptablesCmd, " ")...)
-		output, err := cmd.Output()
-		if err != nil {
-			fmt.Printf("iptalbes输出 %v", output)
-			continue
-		}
-	}
 	return nil
 }
 

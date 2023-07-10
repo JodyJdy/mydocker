@@ -26,7 +26,7 @@ func createBridgeInterface(bridgeName string) error {
 	return nil
 }
 
-// 启动bridge 设备
+// SetInterfaceUP 启动bridge 设备
 func SetInterfaceUP(interfaceName string) error {
 	// 找到 bridge设备
 	iface, err := netlink.LinkByName(interfaceName)
@@ -40,7 +40,7 @@ func SetInterfaceUP(interfaceName string) error {
 	return nil
 }
 
-// 设置bridge ip地址
+// SetInterfaceIP 设置bridge ip地址
 func SetInterfaceIP(name string, rawIP string) error {
 	retries := 2
 	// 找到需要设置的bridge

@@ -52,7 +52,7 @@ var RunCommand = cli.Command{
 		},
 		cli.BoolFlag{
 			Name:  "d",
-			Usage: "detach container",
+			Usage: "后台运行进程",
 		},
 		cli.StringFlag{
 			Name:  "name",
@@ -60,7 +60,7 @@ var RunCommand = cli.Command{
 		},
 		cli.StringSliceFlag{
 			Name:  "e",
-			Usage: "set environment",
+			Usage: "设置环境变量",
 		},
 		cli.StringFlag{
 			Name:  "image",
@@ -69,11 +69,15 @@ var RunCommand = cli.Command{
 
 		cli.StringFlag{
 			Name:  "net",
-			Usage: "container network",
+			Usage: "指定容器所属的网络",
 		},
 		cli.StringSliceFlag{
 			Name:  "p",
-			Usage: "port mapping",
+			Usage: "port 映射",
+		},
+		cli.StringFlag{
+			Name:  "share-net",
+			Usage: "指定共享网络的容器",
 		},
 	},
 	// 具体的执行命令
@@ -111,7 +115,13 @@ var RunCommand = cli.Command{
 			fmt.Println("镜像id不能为空")
 			return nil
 		}
-		run.Run(tty, cmdArray, res, volume, containerName, envSlice, imageId, portmapping, network)
+		// 共享网络
+		sharedContainer := context.String("share-net")
+		if network != "" && sharedContainer != "" {
+			fmt.Println("共享容器网络时不能额外指定网络")
+			return nil
+		}
+		run.Run(tty, cmdArray, res, volume, containerName, envSlice, imageId, portmapping, network, sharedContainer)
 		return nil
 	},
 }

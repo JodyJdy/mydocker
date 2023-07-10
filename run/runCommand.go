@@ -4,18 +4,23 @@ import (
 	"cgroups"
 	"containers"
 	"fmt"
+	"github.com/vishvananda/netns"
 	"io"
 	"log"
 	"networks"
 	"os"
 	"os/exec"
+	"runtime"
 	"strings"
 	"syscall"
 )
 
-func Run(tty bool, cmdArray []string, res *cgroups.ResourceConfig, volume string, containerName string, env []string, image string, portMapping []string, net string) {
+func Run(tty bool, cmdArray []string, res *cgroups.ResourceConfig, volume string, containerName string, env []string, image string, portMapping []string, net string, sharedContainer string) {
 	imageId := containers.ResolveImageId(image, false)
 	command := containers.ResolveCmd(cmdArray, imageId, tty)
+	if sharedContainer != "" {
+		command.SharedNsContainer = sharedContainer
+	}
 	// 提前获取容器id
 	containerInfo := &containers.ContainerInfo{
 		Id:          containers.ContainerId(),
@@ -78,6 +83,10 @@ func RunContainerInitProcess() error {
 	if cmdArray == nil || len(cmdArray) == 0 {
 		return fmt.Errorf("run container get user command error, cmdArray is nil")
 	}
+	// 设置当前进程的网络
+	if command.SharedNsContainer != "" {
+		setContainerNetNs(command.SharedNsContainer)
+	}
 	// 初始化挂载信息
 	containers.SetUpMount()
 	//切换工作目录
@@ -94,6 +103,25 @@ func RunContainerInitProcess() error {
 		fmt.Println(err.Error())
 	}
 	return nil
+}
+
+// 设置容器的网络命名空间
+func setContainerNetNs(infoId string) {
+	infoId = containers.ResolveContainerId(infoId, false)
+	if infoId != "" {
+		info, _ := containers.GetContainerInfo(infoId)
+		// 访问容器进程pid目录下的net文件
+		f, err := os.OpenFile(fmt.Sprintf("/proc/%s/ns/net", info.Pid), os.O_RDONLY, 0)
+		if err != nil {
+			fmt.Printf("获取网络命名空间失败, %v\n", err)
+		}
+		nsFD := f.Fd()
+		// 锁定线程 go是多线程，进入ns时需要锁定线程
+		runtime.LockOSThread()
+		if err = netns.Set(netns.NsHandle(nsFD)); err != nil {
+			fmt.Printf("设置网络命名空间失败, %v\n", err)
+		}
+	}
 }
 
 // Ps 列出所有进程

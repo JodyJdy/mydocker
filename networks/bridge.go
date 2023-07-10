@@ -112,7 +112,8 @@ func (BridgeNetworkDriver) Disconnect(network Network, endpoint *EndPoint) error
 
 // 设置iptables 规则
 func setupIPTables(bridgeName string, subnet *net.IPNet) error {
-	// 执行命令 配置 nat 规则
+	// 执行命令 配置 snat 规则
+	// 只要是 这个网桥上发出的包 ，都会做源ip地址转换，保证了 容器 访问外部网络的数据包使用宿主机ip
 	iptablesCmd := fmt.Sprintf("-t nat -A POSTROUTING -s %s ! -o %s -j MASQUERADE", subnet.String(), bridgeName)
 	cmd := exec.Command("iptables", strings.Split(iptablesCmd, " ")...)
 	// 执行命令或获取输出

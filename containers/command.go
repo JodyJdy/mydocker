@@ -13,6 +13,8 @@ type CommandArray struct {
 	Cmds []string `json:"cmds"`
 	//执行命令的目录
 	WorkDir string `json:"workDir"`
+	// 共享网络的容器
+	SharedNsContainer string `json:"SharedNsContainer"`
 }
 
 func SaveCommand(array *CommandArray, file *os.File) {

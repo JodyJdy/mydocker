@@ -9,14 +9,6 @@ import (
 	"path"
 )
 
-func test() {
-	//netlink.LinkAdd("a")
-	//netns.Set(nil)
-	//net.IPNet{}
-	//ipAddllocator.
-	//
-}
-
 // Network 存储网络的信息
 type Network struct {
 	// 网络名
