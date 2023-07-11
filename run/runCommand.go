@@ -14,7 +14,7 @@ import (
 	"syscall"
 )
 
-func Run(tty bool, cmdArray []string, res *cgroups.ResourceConfig, volume string, containerName string, env []string, image string, portMapping []string, net string) {
+func Run(tty bool, cmdArray []string, res *cgroups.ResourceConfig, volumes []string, containerName string, env []string, image string, portMapping []string, net string) {
 	imageId := containers.ResolveImageId(image, false)
 	command := containers.ResolveCmd(cmdArray, imageId, tty)
 	// 提前获取容器id
@@ -34,7 +34,7 @@ func Run(tty bool, cmdArray []string, res *cgroups.ResourceConfig, volume string
 	}
 	// 获取容器基础目录
 	containerInfo.BaseUrl = fmt.Sprintf(containers.ContainerInfoLocation, containerInfo.Id)
-	parent, writePipe := containers.NewParentProcess(containerInfo, tty, volume, env, imageId)
+	parent, writePipe := containers.NewParentProcess(containerInfo, tty, volumes, env, imageId)
 	if parent == nil {
 		log.Println("New parent process error")
 		return

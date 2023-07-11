@@ -15,7 +15,7 @@ import (
 
 // NewParentProcess 创建一个父进程， 父进程的目的是
 // 真正的执行cmd，并用cmd 对应的进程替换自身
-func NewParentProcess(info *ContainerInfo, tty bool, volume string, env []string, imageId string) (*exec.Cmd, *os.File) {
+func NewParentProcess(info *ContainerInfo, tty bool, volumes []string, env []string, imageId string) (*exec.Cmd, *os.File) {
 	readPipe, writePipe, err := NewPipe()
 	if err != nil {
 		_ = fmt.Errorf("创建管道失败%v", err)
@@ -51,7 +51,7 @@ func NewParentProcess(info *ContainerInfo, tty bool, volume string, env []string
 	// 设置环境变量
 	cmd.Env = append(os.Environ(), env...)
 	// 工作目录，为 overlay文件系统中的 merge目录 ,容器进程，会以merged目录作为根目录运行
-	cmd.Dir = NewWorkSpace(info, volume, imageId)
+	cmd.Dir = NewWorkSpace(info, volumes, imageId)
 	return cmd, writePipe
 }
 

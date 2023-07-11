@@ -9,13 +9,13 @@ import (
 )
 
 // NewWorkSpace 返回挂载后的merged目录
-func NewWorkSpace(info *ContainerInfo, volume string, imageId string) string {
+func NewWorkSpace(info *ContainerInfo, volumes []string, imageId string) string {
 	lowDir := getLowerDir(imageId)
 	createUpperDir(info.BaseUrl)
 	createWorkDir(info.BaseUrl)
 	mergedDir := createMergedDir(info.BaseUrl, lowDir)
 	//创建卷的挂载
-	CreateVolume(info, mergedDir, volume, imageId)
+	CreateVolume(info, mergedDir, volumes, imageId)
 	return mergedDir
 }
 
@@ -71,14 +71,16 @@ func createMergedDir(containerBaseUrl string, lowDir string) string {
 	}
 	return mergedDir
 }
-func CreateVolume(info *ContainerInfo, mergedDir string, volume string, imageId string) {
-	if volume != "" {
-		volumeUrl := strings.Split(volume, ":")
-		// 宿主机路径
-		hostUrl := volumeUrl[0]
-		//容器内路径
-		containerPath := volumeUrl[1]
-		MountVolume(info, hostUrl, containerPath, mergedDir, false)
+func CreateVolume(info *ContainerInfo, mergedDir string, volumes []string, imageId string) {
+	for _, volume := range volumes {
+		if volume != "" {
+			volumeUrl := strings.Split(volume, ":")
+			// 宿主机路径
+			hostUrl := volumeUrl[0]
+			//容器内路径
+			containerPath := volumeUrl[1]
+			MountVolume(info, hostUrl, containerPath, mergedDir, false)
+		}
 	}
 	// 创建匿名卷
 	imageInfo, err := GetImageInfo(imageId)

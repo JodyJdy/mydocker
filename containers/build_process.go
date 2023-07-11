@@ -29,7 +29,7 @@ func BuildFrom(image string) *ContainerInfo {
 	}
 	// 获取容器基础目录
 	info.BaseUrl = fmt.Sprintf(ContainerInfoLocation, info.Id)
-	parent, writePipe := NewParentProcess(info, false, "", []string{}, imageId)
+	parent, writePipe := NewParentProcess(info, false, []string{}, []string{}, imageId)
 	if parent == nil {
 		log.Println("New parent process error")
 		return nil

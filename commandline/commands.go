@@ -46,9 +46,9 @@ var RunCommand = cli.Command{
 			Name:  "cpuset",
 			Usage: "cpuset limit",
 		},
-		cli.StringFlag{
+		cli.StringSliceFlag{
 			Name:  "v",
-			Usage: "volume",
+			Usage: "volume，可挂载多个",
 		},
 		cli.BoolFlag{
 			Name:  "d",
@@ -96,7 +96,7 @@ var RunCommand = cli.Command{
 			CpuShare:    context.String("cpushare"),
 		}
 		// 获取卷挂载参数
-		volume := context.String("v")
+		volumes := context.StringSlice("v")
 		// 获取容器名称
 		containerName := context.String("name")
 		//获取容器名称
@@ -111,7 +111,7 @@ var RunCommand = cli.Command{
 			fmt.Println("镜像id不能为空")
 			return nil
 		}
-		run.Run(tty, cmdArray, res, volume, containerName, envSlice, imageId, portmapping, network)
+		run.Run(tty, cmdArray, res, volumes, containerName, envSlice, imageId, portmapping, network)
 		return nil
 	},
 }
