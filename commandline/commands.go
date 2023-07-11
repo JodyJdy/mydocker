@@ -69,15 +69,11 @@ var RunCommand = cli.Command{
 
 		cli.StringFlag{
 			Name:  "net",
-			Usage: "指定容器所属的网络",
+			Usage: "指定容器所属的网络 -net host 和宿主机共享网络 -net container:容器标识 和容器共享网络 -net bridgeName 指定网络 ",
 		},
 		cli.StringSliceFlag{
 			Name:  "p",
 			Usage: "port 映射",
-		},
-		cli.StringFlag{
-			Name:  "share-net",
-			Usage: "指定共享网络的容器",
 		},
 	},
 	// 具体的执行命令
@@ -115,13 +111,7 @@ var RunCommand = cli.Command{
 			fmt.Println("镜像id不能为空")
 			return nil
 		}
-		// 共享网络
-		sharedContainer := context.String("share-net")
-		if network != "" && sharedContainer != "" {
-			fmt.Println("共享容器网络时不能额外指定网络")
-			return nil
-		}
-		run.Run(tty, cmdArray, res, volume, containerName, envSlice, imageId, portmapping, network, sharedContainer)
+		run.Run(tty, cmdArray, res, volume, containerName, envSlice, imageId, portmapping, network)
 		return nil
 	},
 }
@@ -281,7 +271,7 @@ var NetworkCommand = cli.Command{
 			},
 			Action: func(context *cli.Context) error {
 				if len(context.Args()) < 1 {
-					return fmt.Errorf("Missing network name")
+					return fmt.Errorf("缺少网络名称")
 				}
 				networks.Init()
 				err := networks.CreateNetwork(context.String("driver"), context.String("subnet"), context.Args()[0])

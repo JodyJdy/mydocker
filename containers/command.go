@@ -15,6 +15,8 @@ type CommandArray struct {
 	WorkDir string `json:"workDir"`
 	// 共享网络的容器
 	SharedNsContainer string `json:"SharedNsContainer"`
+	// 使用宿主机的网络
+	Host bool `json:"netns"`
 }
 
 func SaveCommand(array *CommandArray, file *os.File) {

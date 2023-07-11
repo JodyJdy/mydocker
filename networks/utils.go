@@ -3,7 +3,10 @@ package networks
 import (
 	"fmt"
 	"github.com/vishvananda/netlink"
+	"github.com/vishvananda/netns"
 	"net"
+	"os"
+	"runtime"
 	"strings"
 	"time"
 )
@@ -66,4 +69,19 @@ func SetInterfaceIP(name string, rawIP string) error {
 	//由于ipNet中包含了网段的信息，还会配置路由表，将 xx.xx.0.0/16  转发到这个网络接口中
 	addr := &netlink.Addr{IPNet: ipNet, Peer: ipNet, Label: "", Flags: 0, Scope: 0, Broadcast: nil}
 	return netlink.AddrAdd(iface, addr)
+}
+
+// SetContainerNetNs 设置指定进程的网络命名空间
+func SetContainerNetNs(pid string) {
+	// 访问容器进程pid目录下的net文件
+	f, err := os.OpenFile(fmt.Sprintf("/proc/%s/ns/net", pid), os.O_RDONLY, 0)
+	if err != nil {
+		fmt.Printf("获取网络命名空间失败, %v\n", err)
+	}
+	nsFD := f.Fd()
+	// 锁定线程 go是多线程，进入ns时需要锁定线程
+	runtime.LockOSThread()
+	if err = netns.Set(netns.NsHandle(nsFD)); err != nil {
+		fmt.Printf("设置网络命名空间失败, %v\n", err)
+	}
 }

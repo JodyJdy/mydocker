@@ -29,7 +29,7 @@ func BuildBaseImage(imageTarUrl string) {
 	}
 	storeBaseImageInfo()
 	// 解压文件，tar包
-	if _, err := exec.Command("tar", "--strip-components", "1", "-xvf", imageTarUrl, "-C", BaseImageLayerLocation).CombinedOutput(); err != nil {
+	if _, err := exec.Command("tar", "-xvf", imageTarUrl, "-C", BaseImageLayerLocation).CombinedOutput(); err != nil {
 		fmt.Printf("Unbar dir %s error %v\n", BaseImageLayerLocation, err)
 		return
 	}
@@ -232,9 +232,9 @@ func BuildImage(tag string, dockerFile string) {
 	//记录镜像的信息
 	recordImageInfo(info)
 	// 拷贝镜像的Upper内容到layer，新的镜像就完成了
-	Copy(path.Join(d.Info.BaseUrl, "upper"), fmt.Sprintf(ImageLayerLocation, info.Id))
+	Copy(path.Join(d.Info.BaseUrl, "upper")+"/*", fmt.Sprintf(ImageLayerLocation, info.Id))
 	// 移除临时容器
-	RemoveContainer(d.Info.Id)
+	//RemoveContainer(d.Info.Id)
 }
 func initImageInfo(tag string) *ImageInfo {
 	//获取镜像id
@@ -292,12 +292,16 @@ func (d *DockerFile) add(a string) {
 	}
 	//最后一个是要拷贝到的地方
 	cpTarget := path.Join(d.Info.BaseUrl, "merged", list[len(list)-1])
-	fmt.Printf("targiet is %s", cpTarget)
 	pwd, _ := os.Getwd()
 	for i := 0; i < len(list)-1; i++ {
-		Copy(path.Join(pwd, list[i]), cpTarget)
+		// 自动解压归档文件
+		if path.Ext(list[i]) == ".tar" {
+			fmt.Println("解压!!!!!!!!!")
+			UnTar(path.Join(pwd, list[i]), cpTarget)
+		} else {
+			Copy(path.Join(pwd, list[i]), cpTarget)
+		}
 	}
-	fmt.Println(list)
 }
 func (d *DockerFile) copy(c string) {
 	c = strings.TrimPrefix(c, COPY)
@@ -310,9 +314,9 @@ func (d *DockerFile) copy(c string) {
 	}
 	//最后一个是要拷贝到的地方
 	cpTarget := path.Join(d.Info.BaseUrl, "merged", list[len(list)-1])
-	fmt.Printf("targiet is %s", cpTarget)
 	pwd, _ := os.Getwd()
 	for i := 0; i < len(list)-1; i++ {
+		// 拷贝文件
 		Copy(path.Join(pwd, list[i]), cpTarget)
 	}
 	fmt.Println(list)

@@ -22,7 +22,7 @@ var ipAllocatorManager = &IpAllocatorManager{
 func Init() error {
 	// 创建网桥
 	var bridgeDriver = BridgeNetworkDriver{}
-	drivers[bridgeDriver.Name()] = &bridgeDriver
+	drivers[DefaultDriver] = &bridgeDriver
 
 	if _, err := os.Stat(DefaultNetworkPath); err != nil {
 		if os.IsNotExist(err) {
@@ -64,6 +64,10 @@ func ListNetwork() {
 
 // CreateNetwork 创建网络
 func CreateNetwork(driver, subnet, name string) error {
+	// 默认使用bridge 作为driver
+	if driver == "" {
+		driver = DefaultDriver
+	}
 	// 解析cidr网络  127.0.0.1/8
 	_, cidr, _ := net.ParseCIDR(subnet)
 	// 分配ip

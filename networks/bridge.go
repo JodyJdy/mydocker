@@ -21,7 +21,7 @@ type NetworkDriver interface {
 type BridgeNetworkDriver struct{}
 
 func (BridgeNetworkDriver) Name() string {
-	return "bridge"
+	return DefaultDriver
 }
 
 func (d BridgeNetworkDriver) Create(subnet string, name string) (*Network, error) {
@@ -44,7 +44,7 @@ func (d *BridgeNetworkDriver) initBridge(n *Network) error {
 	// 创建bridge虚拟设备
 	bridgeName := n.Name
 	if err := createBridgeInterface(bridgeName); err != nil {
-		return fmt.Errorf("error add bridge： %s, Error: %v", bridgeName, err)
+		return fmt.Errorf("添加bridge失败 %s,  %v", bridgeName, err)
 	}
 	//设置bridge 地址和路由
 	gatewayIP := *n.IpRange

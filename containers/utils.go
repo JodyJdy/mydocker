@@ -1,11 +1,10 @@
 package containers
 
 import (
-	"bufio"
-	"io"
+	"fmt"
 	"math/rand"
 	"os"
-	"path/filepath"
+	"os/exec"
 	"time"
 )
 
@@ -46,43 +45,55 @@ func FileExist(path string) bool {
 	}
 	return false
 }
-func Copy(from, to string) error {
-	f, e := os.Stat(from)
-	if e != nil {
-		return e
-	}
-	if f.IsDir() {
-		//from是文件夹，那么定义to也是文件夹g
-		if list, e := os.ReadDir(from); e == nil {
-			for _, item := range list {
-				if e = Copy(filepath.Join(from, item.Name()), filepath.Join(to, item.Name())); e != nil {
-					return e
-				}
-			}
+
+// Copy 文件拷贝
+func Copy(from, to string) {
+	info, err := os.Stat(to)
+	// 如果不存在进行创建
+	if err != nil {
+		err := os.MkdirAll(to, 0622)
+		if err != nil {
+			fmt.Printf("创建文件夹失败:%s, 原因: %v\n", to, err)
+			return
 		}
 	} else {
-		//from是文件，那么创建to的文件夹g
-		p := filepath.Dir(to)
-		if _, e = os.Stat(p); e != nil {
-			if e = os.MkdirAll(p, 0777); e != nil {
-				return e
-			}
+		if !info.IsDir() {
+			fmt.Printf("%s不是一个目录\n", to)
+			return
 		}
-		//读取源文件g
-		file, e := os.Open(from)
-		if e != nil {
-			return e
-		}
-		defer file.Close()
-		bufReader := bufio.NewReader(file)
-		// 创建一个文件用于保存
-		out, e := os.Create(to)
-		if e != nil {
-			return e
-		}
-		defer out.Close()
-		// 然后将文件流和文件流对接起来g
-		_, e = io.Copy(out, bufReader)
 	}
-	return e
+	copyCmd := fmt.Sprintf("cp -R  %s  %s", from, to)
+	cmd := exec.Command("sh", "-c", copyCmd)
+	fmt.Println("拷贝命令")
+	fmt.Println(cmd.String())
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Printf("拷贝文件错误:%s, %v\n", out, err)
+	}
+}
+
+// UnTar 解压文件
+func UnTar(from, to string) {
+	info, err := os.Stat(to)
+	// 如果不存在进行创建
+	if err != nil {
+		err := os.MkdirAll(to, 0622)
+		if err != nil {
+			fmt.Printf("创建文件夹失败:%s, 原因: %v\n", to, err)
+			return
+		}
+	} else {
+		if !info.IsDir() {
+			fmt.Printf("%s不是一个目录\n", to)
+			return
+		}
+	}
+
+	cmd := exec.Command("tar", "-xvf", from, "-C", to)
+	fmt.Println("解压命令")
+	fmt.Println(cmd.String())
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Printf("解压文件错误:%s, %v\n", out, err)
+	}
 }
