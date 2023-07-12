@@ -9,5 +9,6 @@ use (
 	./nsenter
 	./networks
 	./sysv_mq
+	./portmapping
 	.
 )

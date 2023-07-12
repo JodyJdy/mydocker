@@ -2,6 +2,7 @@ package networks
 
 import (
 	"containers"
+	"encoding/json"
 	"fmt"
 	"github.com/vishvananda/netlink"
 	"github.com/vishvananda/netns"
@@ -9,9 +10,12 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"portmapping"
 	"runtime"
 	"strings"
+	"sysv_mq"
 	"text/tabwriter"
+	"time"
 )
 
 var ipAllocatorManager = &IpAllocatorManager{
@@ -178,8 +182,16 @@ func configEndpointIpAddressAndRoute(ep *EndPoint, cinfo *containers.ContainerIn
 	return nil
 }
 
-// @todo 端口生效没有效果，解决方式，重写一个端口映射
 func configPortMapping(ep *EndPoint) error {
+	addr := ep.IPAddress.String()
+	var portMapping = []string{}
+	for _, p := range ep.PortMapping {
+		splits := strings.Split(p, ":")
+		toAddr := addr + ":" + splits[1]
+		portMapping = append(portMapping, splits[0]+":"+toAddr)
+	}
+	// 发送端口映射
+	SendPortMapping(portMapping, []string{})
 	return nil
 }
 
@@ -215,5 +227,64 @@ func enterContainerNetns(enLink *netlink.Link, cinfo *containers.ContainerInfo) 
 		// 解锁线程
 		runtime.UnlockOSThread()
 		f.Close()
+	}
+}
+
+type PortMappingStruct struct {
+	// 端口映射
+	PortMapping []string `json:"PortMapping"`
+	// 端口取消映射
+	PortUnMapping []string `json:"PortUnMapping"`
+}
+
+func StartPortMapping() {
+	mq, err := sysv_mq.NewMessageQueue(&sysv_mq.QueueConfig{
+		Key:     0xDEADBEEF,
+		MaxSize: 1024,
+		Mode:    sysv_mq.IPC_CREAT | 0600,
+	})
+	if err != nil {
+		fmt.Printf("启动失败:%v\n", err)
+		return
+	}
+	for {
+		response, _, err := mq.ReceiveBytes(0, sysv_mq.IPC_NOWAIT)
+		var p = PortMappingStruct{}
+
+		err = json.Unmarshal(response, &p)
+		if err == nil {
+			fmt.Printf("端口配置%s\n", p)
+			// 读取成功，立刻再去读取
+			for _, i := range p.PortMapping {
+				splits := strings.SplitN(i, ":", 2)
+				portmapping.AddPortMapping(splits[0], splits[1])
+			}
+			for _, i := range p.PortUnMapping {
+				splits := strings.SplitN(i, ":", 2)
+				portmapping.RemovePortMapping(splits[0], splits[1])
+			}
+			continue
+		}
+		time.Sleep(time.Millisecond * 1000)
+	}
+	ch := make(chan interface{}, 1)
+	fmt.Println(<-ch)
+}
+
+func SendPortMapping(p []string, removeP []string) {
+	var s = PortMappingStruct{
+		PortMapping:   p,
+		PortUnMapping: removeP,
+	}
+	mq, err := sysv_mq.NewMessageQueue(&sysv_mq.QueueConfig{
+		Key:     0xDEADBEEF,
+		MaxSize: 1024,
+		Mode:    sysv_mq.IPC_CREAT | 0600,
+	})
+	content, _ := json.Marshal(s)
+	err = mq.SendBytes(content, 1, sysv_mq.IPC_NOWAIT)
+	if err != nil {
+		fmt.Printf("执行失败:%v\n", err)
+		return
 	}
 }

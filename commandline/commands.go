@@ -15,9 +15,9 @@ import (
 func StartCommands() {
 	app := cli.NewApp()
 	app.Name = "mydocker"
-	app.Usage = "mydocker is a simple container runtime implementation"
+	app.Usage = "容器运行时实现"
 	app.Commands = []cli.Command{RunCommand, InitCommand, CommitCommand, PsCommand, LogCommand,
-		ExecCommand, StopCommand, RemoveCommand, BuildBaseImageCommand, ImagesCommand, BuildImageCommand, NetworkCommand}
+		ExecCommand, StopCommand, RemoveCommand, BuildBaseImageCommand, ImagesCommand, BuildImageCommand, NetworkCommand, PortMappingCommand}
 	err := app.Run(os.Args)
 	if err != nil {
 		log.Fatalln(err)
@@ -302,6 +302,43 @@ var NetworkCommand = cli.Command{
 				if err != nil {
 					return fmt.Errorf("remove network error: %+v", err)
 				}
+				return nil
+			},
+		},
+	},
+}
+
+var PortMappingCommand = cli.Command{
+	Name:  "portmap",
+	Usage: "管理端口映射",
+	Subcommands: []cli.Command{
+		{
+			Name:  "start",
+			Usage: "启动端口映射服务",
+			Action: func(context *cli.Context) error {
+				networks.StartPortMapping()
+				return nil
+			},
+		},
+		{
+			Name:  "forward",
+			Usage: "端口转发",
+			Flags: []cli.Flag{
+				cli.StringSliceFlag{
+					Name:  "p",
+					Usage: "手动配置端口映射",
+				},
+				cli.StringSliceFlag{
+					Name:  "d",
+					Usage: "删除端口映射",
+				},
+			},
+			Action: func(context *cli.Context) error {
+				// 端口映射
+				portMappings := context.StringSlice("p")
+				// 删除端口映射
+				removePortMappings := context.StringSlice("d")
+				networks.SendPortMapping(portMappings, removePortMappings)
 				return nil
 			},
 		},
