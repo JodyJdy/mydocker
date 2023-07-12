@@ -8,5 +8,6 @@ use (
 	./cgroups
 	./nsenter
 	./networks
+	./sysv_mq
 	.
 )

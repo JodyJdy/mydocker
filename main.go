@@ -1,15 +1,47 @@
 package main
 
 import (
-	"commandline"
 	"fmt"
 	"os"
 	"os/exec"
 	"syscall"
+	"sysv_mq"
+	"time"
 )
 
 func main() {
-	commandline.StartCommands()
+	//commandline.StartCommands()
+	mq, err := sysv_mq.NewMessageQueue(&sysv_mq.QueueConfig{
+		Key:     0xDEADBEEF,
+		MaxSize: 1024,
+		Mode:    sysv_mq.IPC_CREAT | 0600,
+	})
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	go func() {
+		for {
+			err = mq.SendBytes([]byte("Hello World"), 1, sysv_mq.IPC_NOWAIT)
+			if err != nil {
+				fmt.Println(err)
+			}
+			time.Sleep(time.Millisecond * 1000)
+		}
+	}()
+
+	for {
+		response, _, err := mq.ReceiveBytes(0, sysv_mq.IPC_NOWAIT)
+		if err != nil {
+			fmt.Println(err)
+		} else {
+			fmt.Println(string(response))
+		}
+		time.Sleep(time.Millisecond * 1000)
+	}
+	ch := make(chan interface{}, 1)
+	<-ch
+
 }
 
 // worked
