@@ -97,7 +97,7 @@ func listen(port int) {
 		}
 		// 拷贝连接信息
 		go io.Copy(fromcon, toCon)
-		go io.Copy(toCon, fromcon)
+		io.Copy(toCon, fromcon)
 	}
 }
 
