@@ -71,7 +71,7 @@ func (p *PortMapping) loadBalancer(port int) string {
 	return p.TargetWithPort[port][p.LoadBalancer[port]]
 }
 func listen(port int) {
-	fromaddr := fmt.Sprintf("127.0.0.1:%d", port)
+	fromaddr := fmt.Sprintf("0.0.0.0:%d", port)
 	fromlistener, err := net.Listen("tcp", fromaddr)
 	if fromlistener == nil {
 		return
