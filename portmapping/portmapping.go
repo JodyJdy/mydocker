@@ -2,6 +2,7 @@ package portmapping
 
 import (
 	"fmt"
+	"io"
 	"net"
 	"strconv"
 	"sync"
@@ -94,8 +95,9 @@ func listen(port int) {
 			fromcon.Close()
 			continue
 		}
-		go handleConnection(fromcon, toCon)
-		go handleConnection(toCon, fromcon)
+		// 拷贝连接信息
+		go io.Copy(fromcon, toCon)
+		go io.Copy(toCon, fromcon)
 	}
 }
 
@@ -134,22 +136,4 @@ func RemovePort(strPort string) {
 func Main() {
 	ch := make(chan int)
 	fmt.Println(<-ch)
-}
-
-// 处理连接信息
-func handleConnection(r, w net.Conn) {
-	defer r.Close()
-	defer w.Close()
-
-	var buffer = make([]byte, 100000)
-	for {
-		n, err := r.Read(buffer)
-		if err != nil {
-			break
-		}
-		n, err = w.Write(buffer[:n])
-		if err != nil {
-			break
-		}
-	}
 }
