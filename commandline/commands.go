@@ -17,7 +17,7 @@ func StartCommands() {
 	app.Name = "mydocker"
 	app.Usage = "容器运行时实现"
 	app.Commands = []cli.Command{RunCommand, InitCommand, CommitCommand, PsCommand, LogCommand,
-		ExecCommand, StopCommand, RemoveCommand, BuildBaseImageCommand, ImagesCommand, BuildImageCommand, NetworkCommand, PortMappingCommand}
+		ExecCommand, StopCommand, RemoveCommand, BuildBaseImageCommand, ImagesCommand, BuildImageCommand, NetworkCommand, PortMappingCommand, SaveCommand}
 	err := app.Run(os.Args)
 	if err != nil {
 		log.Fatalln(err)
@@ -342,5 +342,23 @@ var PortMappingCommand = cli.Command{
 				return nil
 			},
 		},
+	},
+}
+
+var SaveCommand = cli.Command{
+	Name:  "save",
+	Usage: "保存容器为tar文件",
+	Flags: []cli.Flag{
+		cli.StringFlag{
+			Name:  "o",
+			Usage: "保存的文件名,以tar结尾",
+		},
+		cli.StringFlag{
+			Name:  "c",
+			Usage: "容器标识",
+		},
+	},
+	Action: func(context *cli.Context) {
+		containers.SaveContainer(context.String("c"), context.String("o"))
 	},
 }

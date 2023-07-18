@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path"
 	"strconv"
 	"strings"
 	"syscall"
@@ -294,4 +295,21 @@ func ResolveContainerId(idOrName string, justName bool) string {
 		}
 	}
 	return ""
+}
+
+func SaveContainer(idOrName string, saveName string) {
+	id := ResolveContainerId(idOrName, false)
+	if id == "" {
+		fmt.Printf("容器标识: %s 不存在", idOrName)
+		return
+	}
+	info, err := GetContainerInfo(id)
+	if err != nil {
+		fmt.Printf("获取容器信息失败: %v", err)
+		return
+	}
+	dir := path.Join(info.BaseUrl, MERGED)
+	if _, err := exec.Command("tar", "-cvf", saveName, "-C", dir, ".").CombinedOutput(); err != nil {
+		fmt.Println("打包容器失败")
+	}
 }
