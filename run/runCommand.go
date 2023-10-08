@@ -102,13 +102,13 @@ func RunContainerInitProcess() error {
 	setContainerNetNs(*command)
 	// 初始化挂载信息
 	containers.SetUpMount()
-	//切换工作目录
-	os.Chdir(command.WorkDir)
 	path, err := exec.LookPath(cmdArray[0])
 	if err != nil {
 		fmt.Printf("Exec loop path error %v\n", err)
 		return err
 	}
+	//切换工作目录
+	os.Chdir(command.WorkDir)
 	// 当前处于父进程中， exec 会执行cmd，将cmd对应的进程代替父进程
 	//也就是说容器中 pid =1的进程会是 cmd对应的进程
 	if err := syscall.Exec(path, cmdArray[0:], os.Environ()); err != nil {

@@ -78,7 +78,8 @@ func RunParentProcess(info *ContainerInfo, env []string, workDir string) (*exec.
 	cmd.Stdout = logFile
 	// 设置环境变量
 	cmd.Env = append(os.Environ(), env...)
-	cmd.Dir = path.Join(info.BaseUrl, "merged", workDir)
+	//这个目录是容器的root目录，不拼接 workdir
+	cmd.Dir = path.Join(info.BaseUrl, "merged")
 	return cmd, writePipe
 }
 
