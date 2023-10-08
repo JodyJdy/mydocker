@@ -27,7 +27,7 @@ func StartCommands() {
 // RunCommand docker run 命令
 var RunCommand = cli.Command{
 	Name: "run",
-	Usage: ` Create a containers with namespace and cgroups limit mydocker run -ti  [command]
+	Usage: ` 启动容器
 		`,
 	Flags: []cli.Flag{
 		cli.BoolFlag{
@@ -119,11 +119,11 @@ var RunCommand = cli.Command{
 // InitCommand 定义 init 命令，这是内部命令
 var InitCommand = cli.Command{
 	Name: "init",
-	Usage: `Init containers process run user's process in containers. Do not call it outside 
+	Usage: `内部用于初始化容器进程，不能从外部访问
 		`,
 	// 具体的执行命令
 	Action: func(context *cli.Context) error {
-		log.Println("启动 init 进程")
+		log.Println("容器 init 中 ")
 		err := run.RunContainerInitProcess()
 		if err != nil {
 			return err
@@ -135,7 +135,7 @@ var InitCommand = cli.Command{
 // CommitCommand 镜像提交命令 @Todo 打包镜像先不做
 var CommitCommand = cli.Command{
 	Name:  "commit",
-	Usage: "commit a container into image",
+	Usage: "提交容器为镜像",
 	Action: func(context *cli.Context) error {
 		if len(context.Args()) < 2 {
 			return fmt.Errorf("缺少容器名称和镜像名称")
@@ -266,7 +266,7 @@ var NetworkCommand = cli.Command{
 				},
 				cli.StringFlag{
 					Name:  "subnet",
-					Usage: "subnet cidr",
+					Usage: "子网cidr",
 				},
 			},
 			Action: func(context *cli.Context) error {
@@ -283,7 +283,7 @@ var NetworkCommand = cli.Command{
 		},
 		{
 			Name:  "list",
-			Usage: "list container network",
+			Usage: "列出创建的网络",
 			Action: func(context *cli.Context) error {
 				networks.Init()
 				networks.ListNetwork()
@@ -292,7 +292,7 @@ var NetworkCommand = cli.Command{
 		},
 		{
 			Name:  "remove",
-			Usage: "remove container network",
+			Usage: "删除网络",
 			Action: func(context *cli.Context) error {
 				if len(context.Args()) < 1 {
 					return fmt.Errorf("Missing network name")
