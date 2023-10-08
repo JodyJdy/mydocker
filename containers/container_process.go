@@ -241,10 +241,7 @@ func StopContainer(containerId string) {
 	pid, _ := strconv.Atoi(info.Pid)
 	// 调用 kill
 	err = syscall.Kill(pid, syscall.SIGTERM)
-	if err != nil {
-		fmt.Printf("关闭容器失败 %v\n", err)
-		return
-	}
+	// 如果进程不存在，说明进程已经结束了，也应该修改状态
 	// 修改容器状态
 	info.Pid = ""
 	info.Status = Stop
