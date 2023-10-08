@@ -125,6 +125,15 @@ lo        Link encap:Local Loopback
           TX packets:0 errors:0 dropped:0 overruns:0 carrier:0
           collisions:0 txqueuelen:1000
           RX bytes:0 (0.0 B)  TX bytes:0 (0.0 B)
+          
+          
+容器中使用nc 监听一个端口
+nc -lp 80
+
+宿主机上面使用:
+telnet  容器ip  80
+
+可以连接成功
 
 ```
 
@@ -150,9 +159,60 @@ lo        Link encap:Local Loopback
           collisions:0 txqueuelen:1000
           RX bytes:0 (0.0 B)  TX bytes:0 (0.0 B)
           
-使用nc进行监听
-nc -l 10.72.0.4  3307
 
+容器中使用nc监听端口
 
+nc -lp 3307
 
+宿主机上面使用
+
+telnet 宿主机ip  3307
+
+发现会转发到 容器中去 （需要开启 portmap 服务）
+
+```
+启动带有卷挂载的进程
+```shell
+./mydocker run -ti -image base -v 宿主机目录:容器目录  sh
+```
+## exec
+
+进入容器
+```shell
+./mydocker exec  容器id/容器名称  命令
+
+```
+## stop
+停止容器
+```shell
+./mydocker stop 容器id/容器名称 
+```
+
+## remove
+
+移除容器
+```shell
+./mydocker remove 容器id/容器名称
+```
+
+## save
+容器打包成tar包
+```shell
+./mydocker save  -o 保存的文件名 -c  容器标识
+
+```
+## build
+
+例如如下的dockerfile
+
+```dockerfile
+FROM base
+RUN touch x.txt
+RUN mkdir /home/jdy
+WORKDIR /home/jdy
+ENTRYPOINT sleep 99999
+```
+
+```shell
+./mydocker build -f dockerfile -t xx:0.01
 ```

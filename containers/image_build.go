@@ -361,7 +361,7 @@ func (d *DockerFile) volume(v string) {
 }
 func (d *DockerFile) workDir(w string) {
 	w = strings.TrimPrefix(w, WORKDIR)
-	d.WorkDir = path.Clean(w)
+	d.WorkDir = strings.Trim(path.Clean(w), " ")
 }
 
 func (d *DockerFile) copy2ImageInfo(info *ImageInfo) {
