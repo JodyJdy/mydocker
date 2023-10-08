@@ -27,7 +27,6 @@ func getLowerDir(image string) string {
 	if err != nil {
 		fmt.Println("镜像不存在")
 	}
-	fmt.Println(info)
 	for {
 		//按层查找
 		if info.From != "" {

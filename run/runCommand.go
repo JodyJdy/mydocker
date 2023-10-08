@@ -27,7 +27,7 @@ func Run(tty bool, cmdArray []string, res *cgroups.ResourceConfig, volumes []str
 	}
 	if containerName != "" {
 		if containers.ResolveContainerId(containerName, true) != "" {
-			fmt.Printf("镜像名称重复 %s\n", containerName)
+			fmt.Printf("容器名称重复 %s\n", containerName)
 			return
 		}
 		containerInfo.Name = containerName
@@ -42,7 +42,7 @@ func Run(tty bool, cmdArray []string, res *cgroups.ResourceConfig, volumes []str
 	if err := parent.Start(); err != nil {
 		fmt.Printf("启动父进程失败:%v\n", err)
 	}
-	fmt.Printf("容器id: %d", parent.Process.Pid)
+	fmt.Printf("容器进程 pid: %d \n", parent.Process.Pid)
 	// 记录容器信息
 	containers.RecordContainerInfo(containerInfo, parent.Process.Pid)
 	cgroups.ProcessCgroup(containerInfo.Id, parent.Process.Pid, res)
@@ -94,7 +94,7 @@ func processNetWork(net string, cmd *containers.CommandArray, info *containers.C
 func RunContainerInitProcess() error {
 	command := containers.ReadUserCommand()
 	cmdArray := command.Cmds
-	fmt.Printf("命令行是:%v\n", cmdArray)
+	fmt.Printf("容器启动命令: %v\n", cmdArray)
 	if cmdArray == nil || len(cmdArray) == 0 {
 		return fmt.Errorf("run container get user command error, cmdArray is nil")
 	}
@@ -105,7 +105,6 @@ func RunContainerInitProcess() error {
 	//切换工作目录
 	os.Chdir(command.WorkDir)
 	path, err := exec.LookPath(cmdArray[0])
-	fmt.Println("Find path %s", path)
 	if err != nil {
 		fmt.Printf("Exec loop path error %v\n", err)
 		return err
