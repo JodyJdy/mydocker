@@ -291,7 +291,15 @@ func (d *DockerFile) add(a string) {
 		list = parseCommandLine(a)
 	}
 	//最后一个是要拷贝到的地方
-	cpTarget := path.Join(d.Info.BaseUrl, "merged", list[len(list)-1])
+	target := list[len(list)-1]
+	cpTarget := ""
+	//绝对路径
+	if strings.HasPrefix(target, "/") {
+		cpTarget = path.Join(d.Info.BaseUrl, "merged", target)
+	} else {
+		//相对路径，此时要拼接workdir
+		cpTarget = path.Join(d.Info.BaseUrl, "merged", d.WorkDir, target)
+	}
 	pwd, _ := os.Getwd()
 	for i := 0; i < len(list)-1; i++ {
 		// 自动解压归档文件
@@ -313,7 +321,15 @@ func (d *DockerFile) copy(c string) {
 		list = parseCommandLine(c)
 	}
 	//最后一个是要拷贝到的地方
-	cpTarget := path.Join(d.Info.BaseUrl, "merged", list[len(list)-1])
+	target := list[len(list)-1]
+	cpTarget := ""
+	//绝对路径
+	if strings.HasPrefix(target, "/") {
+		cpTarget = path.Join(d.Info.BaseUrl, "merged", target)
+	} else {
+		//相对路径，此时要拼接workdir
+		cpTarget = path.Join(d.Info.BaseUrl, "merged", d.WorkDir, target)
+	}
 	pwd, _ := os.Getwd()
 	for i := 0; i < len(list)-1; i++ {
 		// 拷贝文件
