@@ -19,6 +19,8 @@ func BuildFrom(image string) *ContainerInfo {
 	command := &CommandArray{
 		Cmds:    []string{"sh"},
 		WorkDir: "/",
+		// 使用宿主机的网络
+		Host: true,
 	}
 	// 提前获取容器id
 	containerId := ContainerId()
@@ -31,9 +33,13 @@ func BuildFrom(image string) *ContainerInfo {
 	info.BaseUrl = fmt.Sprintf(ContainerInfoLocation, info.Id)
 	parent, writePipe := NewParentProcess(info, false, []string{}, []string{}, imageId)
 	if parent == nil {
-		log.Println("New parent process error")
+		log.Println("启动父进程失败")
 		return nil
 	}
+	//初始化镜像构建使用的域名解析文件
+	CopyFile("/etc/resolv.conf", path.Join(parent.Dir, "/etc/resolv.conf"))
+	parent.Stdout = os.Stdout
+	parent.Stderr = os.Stderr
 	if err := parent.Start(); err != nil {
 		fmt.Printf("启动父进程失败:%v\n", err)
 	}
@@ -43,6 +49,7 @@ func BuildFrom(image string) *ContainerInfo {
 	return info
 }
 func BuildRun(d *DockerFile, command *CommandArray) {
+	command.Host = true
 	parent, writePipe := RunParentProcess(d.Info, d.Env, d.WorkDir)
 	if parent == nil {
 		log.Println("New run parent process error")
@@ -70,12 +77,9 @@ func RunParentProcess(info *ContainerInfo, env []string, workDir string) (*exec.
 	}
 	// 用于读取 管道中的命令
 	cmd.ExtraFiles = []*os.File{readPipe}
-	// 写入日志
-	logFilePath := info.BaseUrl + ContainerLogName
-	logFile, err := os.Create(logFilePath)
-	fmt.Printf("写入日志路径:%s\n", logFilePath)
-	// 将进程的输出重定向到logFile中，访问这个文件，就能读取到日志
-	cmd.Stdout = logFile
+	//获取构建过程中的输出
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 	// 设置环境变量
 	cmd.Env = append(os.Environ(), env...)
 	//这个目录是容器的root目录，不拼接 workdir

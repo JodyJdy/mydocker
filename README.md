@@ -218,3 +218,8 @@ ENTRYPOINT sleep 99999
 ```shell
 ./mydocker build -f dockerfile -t xx:0.01
 ```
+构建一个含有python3的镜像,需要使用alpine.tar作为基础镜像，里面有apk工具
+```shell
+FROM base
+RUN apk add --update python3
+```
