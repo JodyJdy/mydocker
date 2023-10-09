@@ -3,6 +3,7 @@ package networks
 import (
 	"fmt"
 	"github.com/vishvananda/netlink"
+	"log"
 	"net"
 	"os/exec"
 	"strings"
@@ -35,7 +36,7 @@ func (d BridgeNetworkDriver) Create(subnet string, name string) (*Network, error
 	}
 	err := d.initBridge(n)
 	if err != nil {
-		fmt.Printf("初始化bridge 失败:%v", err)
+		log.Printf("初始化bridge 失败:%v", err)
 	}
 	return n, nil
 }
@@ -50,18 +51,17 @@ func (d *BridgeNetworkDriver) initBridge(n *Network) error {
 	gatewayIP := *n.IpRange
 	gatewayIP.IP = n.IpRange.IP
 	if err := SetInterfaceIP(bridgeName, gatewayIP.String()); err != nil {
-		return fmt.Errorf("error assigning address: %s on bridge: %s with an error of: %v", gatewayIP, bridgeName, err)
+		return fmt.Errorf("网桥上面设置地址 失败,ip : %s 网桥 : %s  %v", gatewayIP, bridgeName, err)
 	}
 	//启动bridge
 	if err := SetInterfaceUP(bridgeName); err != nil {
-		return fmt.Errorf("error set bridge up: %s, Error: %v", bridgeName, err)
+		return fmt.Errorf("启动网桥失败  %s   %v", bridgeName, err)
 	}
 
 	// 设置 iptables
 	if err := setupIPTables(bridgeName, n.IpRange); err != nil {
-		return fmt.Errorf("error setting iptables for %s: %v", bridgeName, err)
+		return fmt.Errorf("设置iptalbes 失败, 网桥:%s: %v", bridgeName, err)
 	}
-
 	return nil
 }
 
@@ -119,7 +119,7 @@ func setupIPTables(bridgeName string, subnet *net.IPNet) error {
 	// 执行命令或获取输出
 	output, err := cmd.Output()
 	if err != nil {
-		fmt.Printf("iptables输出:  %v\n", output)
+		log.Printf("iptables输出:  %v\n", output)
 	}
 	return err
 }

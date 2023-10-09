@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/vishvananda/netlink"
+	"log"
 	"net"
 	"os"
 	"path"
@@ -92,7 +93,7 @@ func (nw *Network) load(dumpPath string) error {
 	}
 	err = json.Unmarshal(nwJson, nw)
 	if err != nil {
-		fmt.Printf("加载网络信息失败:%v", err)
+		log.Printf("加载网络信息失败:%v", err)
 		return err
 	}
 	return nil

@@ -2,7 +2,7 @@ package cgroups
 
 import (
 	"bufio"
-	"fmt"
+	"log"
 	"os"
 	"path"
 	"strings"
@@ -17,7 +17,7 @@ func FindCgroupMountPoint(subsystem string) string {
 	defer func(f *os.File) {
 		err := f.Close()
 		if err != nil {
-			fmt.Printf("关闭文件失败: %s\n", f.Name())
+			log.Printf("关闭文件失败: %s\n", f.Name())
 		}
 	}(f)
 	scanner := bufio.NewScanner(f)
@@ -46,13 +46,13 @@ func GetCgroupPath(subsystem string, cgroupPath string, autoCreate bool) (string
 			// 创建子目录
 			if err := os.MkdirAll(path.Join(cgroupRoot, cgroupPath), 0755); err == nil {
 			} else {
-				fmt.Printf("创建cgroup失败 %v\n", err)
+				log.Printf("创建cgroup失败 %v\n", err)
 				return "", err
 			}
 		}
 		return path.Join(cgroupRoot, cgroupPath), nil
 	} else {
-		fmt.Printf("cgroup 路径错误 %v\n", err)
+		log.Printf("cgroup 路径错误 %v\n", err)
 		return "", err
 	}
 }

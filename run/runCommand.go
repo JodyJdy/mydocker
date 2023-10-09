@@ -105,9 +105,8 @@ func processNetWork(net string, cmd *containers.CommandArray, info *containers.C
 func RunContainerInitProcess() error {
 	command := containers.ReadUserCommand()
 	cmdArray := command.Cmds
-	fmt.Printf("容器启动命令: %v\n", cmdArray)
 	if cmdArray == nil || len(cmdArray) == 0 {
-		return fmt.Errorf("run container get user command error, cmdArray is nil")
+		return fmt.Errorf("启动命令为空")
 	}
 	// 设置当前进程的网络 当使用 -net host 和 -net container:id时
 	setContainerNetNs(*command)

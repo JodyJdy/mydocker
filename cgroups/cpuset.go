@@ -18,7 +18,7 @@ func (c *CpuSetSubsystem) Set(cgroupPath string, res *ResourceConfig) error {
 	if subsysCgroupPath, err := GetCgroupPath(c.Name(), cgroupPath, true); err == nil {
 		if res.CpuShare != "" {
 			if err := os.WriteFile(path.Join(subsysCgroupPath, "cpuset.cpus"), []byte(res.CpuShare), 0644); err != nil {
-				return fmt.Errorf("set cgroup cpu share fail %v", err)
+				return fmt.Errorf("设置 cgroup cpu share 失败 %v", err)
 			}
 		}
 		return nil
@@ -30,11 +30,11 @@ func (c *CpuSetSubsystem) Set(cgroupPath string, res *ResourceConfig) error {
 func (c *CpuSetSubsystem) Apply(cgroupPath string, pid int) error {
 	if subsysCgroupPath, err := GetCgroupPath(c.Name(), cgroupPath, false); err == nil {
 		if err := os.WriteFile(path.Join(subsysCgroupPath, "tasks"), []byte(strconv.Itoa(pid)), 0644); err != nil {
-			return fmt.Errorf("set cgroup proc fail %v", err)
+			return fmt.Errorf("设置 cgroup proc 失败 %v", err)
 		}
 		return nil
 	} else {
-		return fmt.Errorf("get cgroup %s error: %v", cgroupPath, err)
+		return fmt.Errorf("获取 cgroup %s 失败: %v", cgroupPath, err)
 	}
 }
 

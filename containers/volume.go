@@ -2,6 +2,7 @@ package containers
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"path"
@@ -25,7 +26,7 @@ func getLowerDir(image string) string {
 	lowDirs = append(lowDirs, fmt.Sprintf(ImageLayerLocation, image))
 	info, err := GetImageInfo(image)
 	if err != nil {
-		fmt.Println("镜像不存在")
+		log.Println("镜像不存在")
 	}
 	for {
 		//按层查找
@@ -42,14 +43,14 @@ func getLowerDir(image string) string {
 func createUpperDir(containerBaseUrl string) {
 	upperDir := path.Join(containerBaseUrl, UPPER)
 	if err := os.MkdirAll(upperDir, 0777); err != nil {
-		fmt.Printf("Mkdir upper layer dir %s error. %v", upperDir, err)
+		log.Printf("创建目录 %s 失败. %v", upperDir, err)
 	}
 
 }
 func createWorkDir(containerBaseUrl string) {
 	workDir := path.Join(containerBaseUrl, WORK)
 	if err := os.MkdirAll(workDir, 0777); err != nil {
-		fmt.Printf("Mkdir work layer dir %s error. %v", workDir, err)
+		log.Printf("创建目录 %s 失败. %v", workDir, err)
 	}
 }
 
@@ -57,7 +58,7 @@ func createWorkDir(containerBaseUrl string) {
 func createMergedDir(containerBaseUrl string, lowDir string) string {
 	mergedDir := path.Join(containerBaseUrl, MERGED)
 	if err := os.MkdirAll(mergedDir, 0777); err != nil {
-		fmt.Printf("Mkdir merged layer dir %s error. %v", mergedDir, err)
+		log.Printf("创建目录 %s 失败： %v", mergedDir, err)
 	}
 	// 处理卷挂载
 	dirs := fmt.Sprintf(OVERLAY_PARAM, lowDir, path.Join(containerBaseUrl, UPPER),
@@ -66,7 +67,7 @@ func createMergedDir(containerBaseUrl string, lowDir string) string {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
-		fmt.Printf("%v \n  ", err)
+		log.Printf("%v \n  ", err)
 	}
 	return mergedDir
 }
@@ -84,7 +85,7 @@ func CreateVolume(info *ContainerInfo, mergedDir string, volumes []string, image
 	// 创建匿名卷
 	imageInfo, err := GetImageInfo(imageId)
 	if err != nil {
-		fmt.Printf("获取镜像失败:%v", err)
+		log.Printf("获取镜像失败:%v", err)
 	}
 	for _, v := range imageInfo.Volume {
 		// 生成卷id
@@ -103,7 +104,7 @@ func MountVolume(info *ContainerInfo, hostPath string, containerPath string, mer
 	if !exist {
 		err := os.MkdirAll(hostPath, 0777)
 		if err != nil {
-			fmt.Printf("创建宿主机目录: %s，失败: %v \n", hostPath, err)
+			log.Printf("创建宿主机目录: %s，失败: %v \n", hostPath, err)
 			return
 		}
 	}
@@ -112,7 +113,7 @@ func MountVolume(info *ContainerInfo, hostPath string, containerPath string, mer
 		//创建目录
 		err := os.MkdirAll(containerPathInHost, 0777)
 		if err != nil {
-			fmt.Printf("创建容器中卷的目录:%s,失败: %v \n", containerPathInHost, err)
+			log.Printf("创建容器中卷的目录:%s,失败: %v \n", containerPathInHost, err)
 			return
 		}
 	}
@@ -122,7 +123,7 @@ func MountVolume(info *ContainerInfo, hostPath string, containerPath string, mer
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
-		fmt.Printf("挂载卷失败： %v", err)
+		log.Printf("挂载卷失败： %v", err)
 	}
 	// 添加卷
 	info.Volume = append(info.Volume, VolumeInfo{
@@ -163,7 +164,7 @@ func umount(mountedPath string) {
 	cmd := exec.Command("umount", mountedPath)
 	err := cmd.Run()
 	if err != nil {
-		fmt.Printf("unmount mount point  %s failed %v ", mountedPath, err)
+		log.Printf("取消挂载点 %s 失败： %v ", mountedPath, err)
 		return
 	}
 }

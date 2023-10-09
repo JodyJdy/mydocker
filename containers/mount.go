@@ -1,7 +1,7 @@
 package containers
 
 import (
-	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"syscall"
@@ -12,14 +12,12 @@ func SetUpMount() {
 	//获取工作目录
 	pwd, err := os.Getwd()
 	if err != nil {
-		fmt.Printf("获取当前工作目录失t"+
-			"：%v \n", err)
+		log.Fatalf("获取当前工作目录失败:%v \n", err)
 	}
 	//挂载root目录
 	err = pivotRoot(pwd)
 	if err != nil {
-		_ = fmt.Errorf("挂载root目录失败: %v \n ", err)
-		return
+		log.Fatalf("挂载root目录失败: %v \n ", err)
 	}
 
 	//设置默认挂载参数 MS_NOEXEC本文将系统不允许运行其他程序 MS_NOEXEC 运行程序的时候
@@ -28,14 +26,12 @@ func SetUpMount() {
 	// 挂载 proc目录，使 容器有独立的proc目录
 	err = syscall.Mount("proc", "/proc", "proc", uintptr(defaultMountFlags), "")
 	if err != nil {
-		_ = fmt.Errorf("挂载 /proc 目录 失败: %v \n", err)
-		return
+		log.Fatalf("挂载 /proc 目录 失败: %v \n", err)
 	}
 	//挂载 /dev 目录
 	err = syscall.Mount("tmpfs", "/dev", "tmpfs", syscall.MS_NOSUID|syscall.MS_STRICTATIME, "mode=755")
 	if err != nil {
-		fmt.Printf("挂载 /dev 目录 失败: %v \n", err)
-		return
+		log.Fatalf("挂载 /dev 目录 失败: %v \n", err)
 	}
 
 }
@@ -45,7 +41,7 @@ func pivotRoot(containerRoot string) error {
 	//使得 cotainerRoot的文件系统和 宿主机的文件系统不同
 	//这是 pivot_root的必须要求
 	if err := syscall.Mount(containerRoot, containerRoot, "bind", syscall.MS_BIND|syscall.MS_REC, ""); err != nil {
-		fmt.Printf("mount rootfs to itself error: %v", err)
+		log.Fatalf("挂载 rootfs 到自身出错 : %v", err)
 		return err
 	}
 	// 创建 cotainerRoot/.pivot_root 存储 old_root
@@ -57,16 +53,16 @@ func pivotRoot(containerRoot string) error {
 	// 挂载点现在依然可以在mount命令中看到
 	// 根目录已经被替换
 	if err := syscall.PivotRoot(containerRoot, pivotDir); err != nil {
-		return fmt.Errorf("pivot_root %v", err)
+		log.Fatalf("pivot_root %v", err)
 	}
 	// 修改当前的工作目录到根目录
 	if err := syscall.Chdir("/"); err != nil {
-		return fmt.Errorf("chdir / %v", err)
+		log.Fatalf("chdir / %v", err)
 	}
 	pivotDir = filepath.Join("/", ".pivot_root")
 	// 卸载掉 containerRoot/.pivot_root
 	if err := syscall.Unmount(pivotDir, syscall.MNT_DETACH); err != nil {
-		return fmt.Errorf("unmount pivot_root dir %v", err)
+		log.Fatalf("umount pivot_root dir 失败 %v", err)
 	}
 	// 删除临时文件夹，如果不删除的话，就可以在容器里面访问到宿主机的根目录
 	return os.Remove(pivotDir)

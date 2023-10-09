@@ -24,7 +24,6 @@ func BuildFrom(image string) *ContainerInfo {
 	}
 	// 提前获取容器id
 	containerId := ContainerId()
-	fmt.Printf("容器id:%s", containerId)
 	info := &ContainerInfo{
 		Id:     containerId,
 		Status: Stop,

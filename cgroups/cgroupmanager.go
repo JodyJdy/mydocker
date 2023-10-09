@@ -1,12 +1,11 @@
 package cgroups
 
 import (
-	"fmt"
 	"log"
 )
 
 // cgroup根路径
-var Roout_Cgroup_Path = "mydocker-cgroup/"
+var RooutCgroupPath = "mydocker-cgroup/"
 
 type CgroupManager struct {
 	// cgroup在hierarchy中的路径 相当于创建的cgroup目录相对于root cgroup目录的路径
@@ -43,7 +42,7 @@ func (c *CgroupManager) Remove() {
 	for _, subSysIns := range SubsystemIns {
 		err := subSysIns.Remove(c.Path)
 		if err != nil {
-			log.Fatalf("remove cgroup fail %v", err)
+			log.Fatalf("删除 cgroup 失败 %v", err)
 			return
 		}
 	}
@@ -51,18 +50,18 @@ func (c *CgroupManager) Remove() {
 
 func ProcessCgroup(containerId string, pid int, res *ResourceConfig) {
 	// 创建cgroup manager
-	cgroupManager := NewCgroupManager(Roout_Cgroup_Path + containerId)
+	cgroupManager := NewCgroupManager(RooutCgroupPath + containerId)
 	//defer cgroupManager.Remove()
 	//设置资源限制
 	err := cgroupManager.Set(res)
 	if err != nil {
-		_ = fmt.Errorf("设置资源限制失败: %v \n", err)
+		log.Printf("设置资源限制失败: %v \n", err)
 		return
 	}
 	//将容器进程加入到cgroup中
 	err = cgroupManager.Apply(pid)
 	if err != nil {
-		_ = fmt.Errorf("添加容器进程到cgroup中失败: %v \n", err)
+		log.Printf("添加容器进程到cgroup中失败: %v \n", err)
 		return
 	}
 }

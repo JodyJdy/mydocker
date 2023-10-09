@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/vishvananda/netlink"
 	"github.com/vishvananda/netns"
+	"log"
 	"net"
 	"os"
 	"path"
@@ -44,7 +45,7 @@ func Init() error {
 			Name: nwName,
 		}
 		if err := nw.load(nwPath); err != nil {
-			fmt.Printf("加载网络: %s失败\n", err)
+			log.Printf("加载网络: %s失败\n", err)
 		}
 		networks[nwName] = nw
 		return nil
@@ -93,7 +94,7 @@ func CreateNetwork(driver, subnet, name string) error {
 func Connect(networkName string, cinfo *containers.ContainerInfo) error {
 	network, ok := networks[networkName]
 	if !ok {
-		fmt.Printf("网络不存在: %s\n", networkName)
+		log.Printf("网络不存在: %s\n", networkName)
 		return nil
 	}
 	// 分配容器IP地址
@@ -123,7 +124,7 @@ func Connect(networkName string, cinfo *containers.ContainerInfo) error {
 func DeleteNetwork(networkName string) error {
 	nw, ok := networks[networkName]
 	if !ok {
-		fmt.Printf("网络不存在: %s\n", networks)
+		log.Printf("网络不存在: %s\n", networks)
 		return nil
 	}
 	// 删除网络
@@ -200,7 +201,7 @@ func enterContainerNetns(enLink *netlink.Link, cinfo *containers.ContainerInfo) 
 	// 访问容器进程pid目录下的net文件
 	f, err := os.OpenFile(fmt.Sprintf("/proc/%s/ns/net", cinfo.Pid), os.O_RDONLY, 0)
 	if err != nil {
-		fmt.Printf("error get container net namespace, %v\n", err)
+		log.Printf("获取容器网络 命名空间 失败  %v\n", err)
 	}
 
 	nsFD := f.Fd()
@@ -208,17 +209,17 @@ func enterContainerNetns(enLink *netlink.Link, cinfo *containers.ContainerInfo) 
 	runtime.LockOSThread()
 	// 修改veth peer 另外一端移到容器的namespace中，将veth的另一端连接到容器
 	if err = netlink.LinkSetNsFd(*enLink, int(nsFD)); err != nil {
-		fmt.Printf("error set link netns , %v\n", err)
+		log.Printf(" 设置 link netns 失败 , %v\n", err)
 	}
 
 	// 获取当前的网络namespace, 用于后面还原
 	origns, err := netns.Get()
 	if err != nil {
-		fmt.Printf("error get current netns, %v\n", err)
+		log.Printf("获取当前 netns,失败%v\n", err)
 	}
 	// 设置当前进程到新的网络namespace，并在函数执行完成之后再恢复到之前的namespace
 	if err = netns.Set(netns.NsHandle(nsFD)); err != nil {
-		fmt.Printf("error set netns, %v\n", err)
+		log.Printf(" 设置 netns 失败 %v\n", err)
 	}
 	return func() {
 		// 还原netns
@@ -244,7 +245,7 @@ func StartPortMapping() {
 		Mode:    sysv_mq.IPC_CREAT | 0600,
 	})
 	if err != nil {
-		fmt.Printf("启动失败:%v\n", err)
+		log.Printf("启动失败:%v\n", err)
 		return
 	}
 	for {
@@ -253,7 +254,7 @@ func StartPortMapping() {
 
 		err = json.Unmarshal(response, &p)
 		if err == nil {
-			fmt.Printf("端口配置%s\n", p)
+			log.Printf("端口配置%s\n", p)
 			// 读取成功，立刻再去读取
 			for _, i := range p.PortMapping {
 				splits := strings.SplitN(i, ":", 2)
@@ -267,8 +268,6 @@ func StartPortMapping() {
 		}
 		time.Sleep(time.Millisecond * 1000)
 	}
-	ch := make(chan interface{}, 1)
-	fmt.Println(<-ch)
 }
 
 func SendPortMapping(p []string, removeP []string) {
@@ -284,7 +283,7 @@ func SendPortMapping(p []string, removeP []string) {
 	content, _ := json.Marshal(s)
 	err = mq.SendBytes(content, 1, sysv_mq.IPC_NOWAIT)
 	if err != nil {
-		fmt.Printf("执行失败:%v\n", err)
+		log.Printf("执行失败:%v\n", err)
 		return
 	}
 }

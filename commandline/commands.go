@@ -117,7 +117,7 @@ var RunCommand = cli.Command{
 		config.Resolv = context.String("resolv")
 
 		if config.Image == "" {
-			fmt.Println("镜像id不能为空")
+			log.Println("镜像id不能为空")
 			return nil
 		}
 		run.Run(config)
@@ -151,7 +151,7 @@ var CommitCommand = cli.Command{
 		}
 		containerName := context.Args().Get(0)
 		imageName := context.Args().Get(1)
-		fmt.Println(containerName, imageName)
+		log.Println(containerName, imageName)
 		return nil
 	},
 }

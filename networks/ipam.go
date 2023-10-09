@@ -3,6 +3,7 @@ package networks
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net"
 	"os"
 	"path"
@@ -39,7 +40,7 @@ func (ipam *IpAllocatorManager) load() error {
 	}
 	err = json.Unmarshal(subnetJson, ipam.Subnets)
 	if err != nil {
-		fmt.Printf("加载ipam失败 %v", err)
+		log.Printf("加载ipam失败 %v", err)
 		return err
 	}
 	return nil
@@ -130,7 +131,7 @@ func (ipam *IpAllocatorManager) Release(subnet *net.IPNet, ipaddr *net.IP) error
 
 	err := ipam.load()
 	if err != nil {
-		fmt.Printf("加载ipam 失败%v\n", err)
+		log.Printf("加载ipam 失败%v\n", err)
 	}
 
 	c := 0

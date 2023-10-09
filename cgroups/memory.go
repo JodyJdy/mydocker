@@ -18,7 +18,7 @@ func (m *MemorySubSystem) Set(cgroupPath string, res *ResourceConfig) error {
 	if subsysCgroupPath, err := GetCgroupPath(m.Name(), cgroupPath, true); err == nil {
 		// 将资源限制写到cgroup中去
 		if err := os.WriteFile(path.Join(subsysCgroupPath, "memory.limit_in_bytes"), []byte(res.MemoryLimit), 0644); err != nil {
-			return fmt.Errorf("set cgroup memory fail %v", err)
+			return fmt.Errorf("设置 cgroup memory 失败 %v", err)
 		}
 		return nil
 	} else {
@@ -29,11 +29,11 @@ func (m *MemorySubSystem) Set(cgroupPath string, res *ResourceConfig) error {
 func (m *MemorySubSystem) Apply(cgroupPath string, pid int) error {
 	if subsysCgroupPath, err := GetCgroupPath(m.Name(), cgroupPath, false); err == nil {
 		if err := os.WriteFile(path.Join(subsysCgroupPath, "tasks"), []byte(strconv.Itoa(pid)), 0644); err != nil {
-			return fmt.Errorf("set cgroup proc fail %v", err)
+			return fmt.Errorf("设置 cgroup proc 失败 %v", err)
 		}
 		return nil
 	} else {
-		return fmt.Errorf("get cgroup %s error: %v", cgroupPath, err)
+		return fmt.Errorf("获取 cgroup %s 失败: %v", cgroupPath, err)
 	}
 }
 

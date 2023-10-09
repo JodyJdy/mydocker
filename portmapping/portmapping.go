@@ -3,6 +3,7 @@ package portmapping
 import (
 	"fmt"
 	"io"
+	"log"
 	"net"
 	"strconv"
 	"sync"
@@ -25,7 +26,7 @@ type PortMapping struct {
 }
 
 func (p *PortMapping) addPortMapping(port int, addr string) {
-	fmt.Printf("添加端口映射: %d:%v\n", port, addr)
+	log.Printf("添加端口映射: %d:%v\n", port, addr)
 	status := p.MappingStatus[port]
 	lock.Lock()
 	p.TargetWithPort[port] = append(p.TargetWithPort[port], addr)
@@ -79,7 +80,7 @@ func listen(port int) {
 	}
 	defer fromlistener.Close()
 	if err != nil {
-		fmt.Printf("监听端口 %s, 失败: %s\n", fromaddr, err.Error())
+		log.Printf("监听端口 %s, 失败: %s\n", fromaddr, err.Error())
 		return
 	}
 	// 进入循环
@@ -88,10 +89,10 @@ func listen(port int) {
 		fromcon, err := fromlistener.Accept()
 		//这边最好也做个协程，防止阻塞
 		toAddr := portMapping.loadBalancer(port)
-		fmt.Printf("接收连接  fro:%s to %s\n", fromaddr, toAddr)
+		log.Printf("接收连接  fro:%s to %s\n", fromaddr, toAddr)
 		toCon, err := net.Dial("tcp", toAddr)
 		if err != nil {
-			fmt.Printf("不能连接到 %s\n", toAddr)
+			log.Printf("不能连接到 %s\n", toAddr)
 			fromcon.Close()
 			continue
 		}

@@ -4,6 +4,7 @@ import (
 	"cgroups"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"path"
@@ -19,7 +20,7 @@ import (
 func NewParentProcess(info *ContainerInfo, tty bool, volumes []string, env []string, imageId string) (*exec.Cmd, *os.File) {
 	readPipe, writePipe, err := NewPipe()
 	if err != nil {
-		_ = fmt.Errorf("创建管道失败%v", err)
+		log.Printf("创建管道失败%v", err)
 		return nil, nil
 	}
 	// 调用mydocker的 init命令， 执行command
@@ -35,13 +36,13 @@ func NewParentProcess(info *ContainerInfo, tty bool, volumes []string, env []str
 	} else {
 		// 生产容器对应目录的container.log文件
 		if err := os.MkdirAll(info.BaseUrl, 0622); err != nil {
-			fmt.Printf("创建目录 %s 失败 %v", info.BaseUrl, err)
+			log.Printf("创建目录 %s 失败 %v", info.BaseUrl, err)
 			return nil, nil
 		}
 		logFilePath := info.BaseUrl + ContainerLogName
 		logFile, err := os.Create(logFilePath)
 		if err != nil {
-			fmt.Printf("创建日志文件 %s 失败 %v", logFilePath, err)
+			log.Printf("创建日志文件 %s 失败 %v", logFilePath, err)
 			return nil, nil
 		}
 		// 将进程的输出重定向到logFile中，访问这个文件，就能读取到日志
@@ -76,7 +77,7 @@ func recordContainerInfo(info *ContainerInfo) {
 	// 序列化为字符串
 	jsonBytes, err := json.Marshal(info)
 	if err != nil {
-		fmt.Printf("记录容器信息失败: %v", err)
+		log.Printf("记录容器信息失败: %v", err)
 		return
 	}
 	jsonStr := string(jsonBytes)
@@ -84,7 +85,7 @@ func recordContainerInfo(info *ContainerInfo) {
 	dirUrl := fmt.Sprintf(ContainerInfoLocation, info.Id)
 	// 尝试创建路径
 	if err := os.MkdirAll(dirUrl, 0622); err != nil {
-		fmt.Printf("创建路径%s 失败: %v", dirUrl, err)
+		log.Printf("创建路径%s 失败: %v", dirUrl, err)
 	}
 	fileName := dirUrl + ContainerConfigName
 	//删除旧的文件，如果存在的话
@@ -93,22 +94,22 @@ func recordContainerInfo(info *ContainerInfo) {
 	file, err := os.Create(fileName)
 	defer file.Close()
 	if err != nil {
-		fmt.Printf("创建文件失败%s 失败: %v", fileName, err)
+		log.Printf("创建文件失败%s 失败: %v", fileName, err)
 		return
 	}
 	if _, err := file.WriteString(jsonStr); err != nil {
-		fmt.Printf("写入容器信息失败: %v", err)
+		log.Printf("写入容器信息失败: %v", err)
 	}
 }
 
 // DeleteContainerInfo 删除容器信息
 func DeleteContainerInfo(info *ContainerInfo) {
 	if err := os.RemoveAll(info.BaseUrl); err != nil {
-		fmt.Printf("删除目录：%s失败 %v", info.BaseUrl, err)
+		log.Printf("删除目录：%s失败 %v", info.BaseUrl, err)
 	}
 	if info.SetCgroup {
 		// 删除cgroup 信息
-		cgroupManager := cgroups.NewCgroupManager(cgroups.Roout_Cgroup_Path + info.Id)
+		cgroupManager := cgroups.NewCgroupManager(cgroups.RooutCgroupPath + info.Id)
 		cgroupManager.Remove()
 	}
 }
@@ -129,7 +130,7 @@ func ListContainerInfo() {
 			item.CreateTime)
 	}
 	if err := w.Flush(); err != nil {
-		fmt.Printf("flush 失败 %v\n", err)
+		log.Printf("flush 失败 %v\n", err)
 		return
 	}
 }
@@ -137,7 +138,7 @@ func getAllContainerInfo() []*ContainerInfo {
 	// 返回所有容器的目录
 	containerDirs, err := os.ReadDir(AllContainerLocation)
 	if err != nil {
-		fmt.Printf("读取目录:%s 失败 %v\n", AllContainerLocation, err)
+		log.Printf("读取目录:%s 失败 %v\n", AllContainerLocation, err)
 		return nil
 	}
 	// 记录所有容器的对象
@@ -145,7 +146,7 @@ func getAllContainerInfo() []*ContainerInfo {
 	for _, containerDir := range containerDirs {
 		tmpContainer, err := ReadContainerInfo(containerDir)
 		if err != nil {
-			fmt.Printf("获取容器信息失败%v\n", err)
+			log.Printf("获取容器信息失败%v\n", err)
 			continue
 		}
 		containers = append(containers, tmpContainer)
@@ -157,12 +158,12 @@ func ReadContainerInfo(containerDir os.DirEntry) (*ContainerInfo, error) {
 	containerInfoFile := dir + ContainerConfigName
 	content, err := os.ReadFile(containerInfoFile)
 	if err != nil {
-		fmt.Printf("读取容器%s 失败 %v", containerInfoFile, err)
+		log.Printf("读取容器%s 失败 %v", containerInfoFile, err)
 		return nil, err
 	}
 	var containerInfo ContainerInfo
 	if err := json.Unmarshal(content, &containerInfo); err != nil {
-		fmt.Printf("json反序列化失败 %v\n", err)
+		log.Printf("json反序列化失败 %v\n", err)
 		return nil, err
 	}
 	return &containerInfo, nil
@@ -172,12 +173,12 @@ func GetContainerInfo(containerId string) (*ContainerInfo, error) {
 	containerInfoFile := dir + ContainerConfigName
 	content, err := os.ReadFile(containerInfoFile)
 	if err != nil {
-		fmt.Printf("读取容器失败%s :%v\n", containerInfoFile, err)
+		log.Printf("读取容器失败%s :%v\n", containerInfoFile, err)
 		return nil, err
 	}
 	var containerInfo ContainerInfo
 	if err := json.Unmarshal(content, &containerInfo); err != nil {
-		fmt.Printf("json反序列化失败 %v\n", err)
+		log.Printf("json反序列化失败 %v\n", err)
 		return nil, err
 	}
 	return &containerInfo, nil
@@ -194,7 +195,7 @@ func ExecContainer(containerId string, cmdArray []string) {
 	pid := GetContainerPid(containerId)
 	//拼接命令行
 	cmdStr := strings.Join(cmdArray, " ")
-	fmt.Printf("容器进程pid是%s,执行命令%s \n", pid, cmdStr)
+	log.Printf("容器进程pid是%s,执行命令%s \n", pid, cmdStr)
 	//再次调用自身
 	cmd := exec.Command("/proc/self/exe", "exec")
 	cmd.Stdin = os.Stdin
@@ -204,19 +205,19 @@ func ExecContainer(containerId string, cmdArray []string) {
 	//设置环境变量， 用于 c 相关的代码判断是否执行，以及作为c执行的参数
 	err := os.Setenv(ENV_EXEC_PID, pid)
 	if err != nil {
-		fmt.Println("设置环境变量失败")
+		log.Println("设置环境变量失败")
 		return
 	}
 	err = os.Setenv(ENV_EXEC_CMD, cmdStr)
 	if err != nil {
-		fmt.Println("设置环境变量失败")
+		log.Println("设置环境变量失败")
 		return
 	}
 	// 添加要attach的进程的环境变量到自身
 	containerEnvs := getEnvsByPid(pid)
 	cmd.Env = append(os.Environ(), containerEnvs...)
 	if err := cmd.Run(); err != nil {
-		fmt.Printf("exec contaienr %s error %v \n", containerId, err)
+		log.Printf("exec 容器 %s 失败 %v \n", containerId, err)
 	}
 }
 
@@ -225,7 +226,7 @@ func getEnvsByPid(pid string) []string {
 	path := fmt.Sprintf("/proc/%s/environ", pid)
 	contentBytes, err := os.ReadFile(path)
 	if err != nil {
-		_ = fmt.Errorf("读取文件 :%s 失败 %v\n", path, err)
+		log.Printf("读取文件 :%s 失败 %v\n", path, err)
 		return nil
 	}
 	//env split by \u0000
@@ -236,7 +237,7 @@ func getEnvsByPid(pid string) []string {
 func StopContainer(containerId string) {
 	info, err := GetContainerInfo(containerId)
 	if err != nil {
-		fmt.Printf("获取容器:%s 进程pid,失败 %v\n", containerId, err)
+		log.Printf("获取容器:%s 进程pid,失败 %v\n", containerId, err)
 	}
 	pid, _ := strconv.Atoi(info.Pid)
 	// 调用 kill
@@ -252,11 +253,11 @@ func RemoveContainer(containerId string) {
 	//获取容器信息
 	info, err := GetContainerInfo(containerId)
 	if err != nil {
-		fmt.Printf("获取容器:%s 进程,失败 %v\n", containerId, err)
+		log.Printf("获取容器:%s 进程,失败 %v\n", containerId, err)
 		return
 	}
 	if info.Status != Stop {
-		fmt.Println("只能删除停止的容器")
+		log.Println("只能删除停止的容器")
 		return
 	}
 	DeleteWorkSpace(info)
@@ -297,16 +298,16 @@ func ResolveContainerId(idOrName string, justName bool) string {
 func SaveContainer(idOrName string, saveName string) {
 	id := ResolveContainerId(idOrName, false)
 	if id == "" {
-		fmt.Printf("容器标识: %s 不存在", idOrName)
+		log.Printf("容器标识: %s 不存在", idOrName)
 		return
 	}
 	info, err := GetContainerInfo(id)
 	if err != nil {
-		fmt.Printf("获取容器信息失败: %v", err)
+		log.Printf("获取容器信息失败: %v", err)
 		return
 	}
 	dir := path.Join(info.BaseUrl, MERGED)
 	if _, err := exec.Command("tar", "-cvf", saveName, "-C", dir, ".").CombinedOutput(); err != nil {
-		fmt.Println("打包容器失败")
+		log.Println("打包容器失败")
 	}
 }

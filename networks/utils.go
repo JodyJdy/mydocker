@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/vishvananda/netlink"
 	"github.com/vishvananda/netns"
+	"log"
 	"net"
 	"os"
 	"runtime"
@@ -54,7 +55,7 @@ func SetInterfaceIP(name string, rawIP string) error {
 		if err == nil {
 			break
 		}
-		fmt.Printf("bridge link 不存在[ %s ]...\n", name)
+		log.Printf("bridge link 不存在[ %s ]...\n", name)
 		time.Sleep(2 * time.Second)
 	}
 	if err != nil {
@@ -76,12 +77,12 @@ func SetContainerNetNs(pid string) {
 	// 访问容器进程pid目录下的net文件
 	f, err := os.OpenFile(fmt.Sprintf("/proc/%s/ns/net", pid), os.O_RDONLY, 0)
 	if err != nil {
-		fmt.Printf("获取网络命名空间失败, %v\n", err)
+		log.Printf("获取网络命名空间失败, %v\n", err)
 	}
 	nsFD := f.Fd()
 	// 锁定线程 go是多线程，进入ns时需要锁定线程
 	runtime.LockOSThread()
 	if err = netns.Set(netns.NsHandle(nsFD)); err != nil {
-		fmt.Printf("设置网络命名空间失败, %v\n", err)
+		log.Printf("设置网络命名空间失败, %v\n", err)
 	}
 }

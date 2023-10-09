@@ -2,6 +2,7 @@ package containers
 
 import (
 	"fmt"
+	"log"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -55,7 +56,7 @@ func CopyFile(fromFile, toFile string) {
 	if err != nil {
 		err := os.MkdirAll(toDir, 0622)
 		if err != nil {
-			fmt.Printf("创建文件夹失败:%s, 原因: %v\n", toDir, err)
+			log.Printf("创建文件夹失败:%s, 原因: %v\n", toDir, err)
 			return
 		}
 	}
@@ -63,7 +64,7 @@ func CopyFile(fromFile, toFile string) {
 	cmd := exec.Command("sh", "-c", copyCmd)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		fmt.Printf("拷贝文件错误:%s, %v\n", out, err)
+		log.Printf("拷贝文件错误:%s, %v\n", out, err)
 	}
 }
 
@@ -74,12 +75,12 @@ func Copy(from, to string) {
 	if err != nil {
 		err := os.MkdirAll(to, 0622)
 		if err != nil {
-			fmt.Printf("创建文件夹失败:%s, 原因: %v\n", to, err)
+			log.Printf("创建文件夹失败:%s, 原因: %v\n", to, err)
 			return
 		}
 	} else {
 		if !info.IsDir() {
-			fmt.Printf("%s不是一个目录\n", to)
+			log.Printf("%s不是一个目录\n", to)
 			return
 		}
 	}
@@ -87,7 +88,7 @@ func Copy(from, to string) {
 	cmd := exec.Command("sh", "-c", copyCmd)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		fmt.Printf("拷贝文件错误:%s, %v\n", out, err)
+		log.Printf("拷贝文件错误:%s, %v\n", out, err)
 	}
 }
 
@@ -98,21 +99,19 @@ func UnTar(from, to string) {
 	if err != nil {
 		err := os.MkdirAll(to, 0622)
 		if err != nil {
-			fmt.Printf("创建文件夹失败:%s, 原因: %v\n", to, err)
+			log.Printf("创建文件夹失败:%s, 原因: %v\n", to, err)
 			return
 		}
 	} else {
 		if !info.IsDir() {
-			fmt.Printf("%s不是一个目录\n", to)
+			log.Printf("%s不是一个目录\n", to)
 			return
 		}
 	}
 
 	cmd := exec.Command("tar", "-xvf", from, "-C", to)
-	fmt.Println("解压命令")
-	fmt.Println(cmd.String())
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		fmt.Printf("解压文件错误:%s, %v\n", out, err)
+		log.Printf("解压文件错误:%s, %v\n", out, err)
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"path"
@@ -14,23 +15,23 @@ import (
 
 func BuildBaseImage(imageTarUrl string) {
 	if !FileExist(imageTarUrl) {
-		fmt.Printf("文件不存在:%s\n", imageTarUrl)
+		log.Printf("文件不存在:%s\n", imageTarUrl)
 	}
 	// 删除原先的基础镜像信息
 	err := os.RemoveAll(BaseImageUrl)
 	if err != nil {
-		fmt.Printf("删除基础镜像信息失败: %v\n", err)
+		log.Printf("删除基础镜像信息失败: %v\n", err)
 		return
 	}
 	err = os.MkdirAll(BaseImageLayerLocation, 0622)
 	if err != nil {
-		fmt.Printf("创建目录失败 %s  %v\n", BaseImageLayerLocation, err)
+		log.Printf("创建目录失败 %s  %v\n", BaseImageLayerLocation, err)
 		return
 	}
 	storeBaseImageInfo()
 	// 解压文件，tar包
 	if _, err := exec.Command("tar", "-xvf", imageTarUrl, "-C", BaseImageLayerLocation).CombinedOutput(); err != nil {
-		fmt.Printf("Unbar dir %s error %v\n", BaseImageLayerLocation, err)
+		log.Printf("解压目录 dir %s 失败 %v\n", BaseImageLayerLocation, err)
 		return
 	}
 
@@ -57,7 +58,7 @@ func recordImageInfo(info *ImageInfo) {
 	// 序列化为字符串
 	jsonBytes, err := json.Marshal(info)
 	if err != nil {
-		fmt.Printf("记录镜像信息失败: %v", err)
+		log.Printf("记录镜像信息失败: %v", err)
 		return
 	}
 	jsonStr := string(jsonBytes)
@@ -65,7 +66,7 @@ func recordImageInfo(info *ImageInfo) {
 	dirUrl := fmt.Sprintf(ImageInfoLocation, info.Id)
 	// 尝试创建路径
 	if err := os.MkdirAll(dirUrl, 0622); err != nil {
-		fmt.Printf("创建路径%s 失败: %v", dirUrl, err)
+		log.Printf("创建路径%s 失败: %v", dirUrl, err)
 	}
 	fileName := dirUrl + ImageConfigName
 	//删除旧的文件，如果存在的话
@@ -74,11 +75,11 @@ func recordImageInfo(info *ImageInfo) {
 	file, err := os.Create(fileName)
 	defer file.Close()
 	if err != nil {
-		fmt.Printf("创建文件失败%s 失败: %v", fileName, err)
+		log.Printf("创建文件失败%s 失败: %v", fileName, err)
 		return
 	}
 	if _, err := file.WriteString(jsonStr); err != nil {
-		fmt.Printf("写入镜像信息失败: %v", err)
+		log.Printf("写入镜像信息失败: %v", err)
 	}
 }
 func ListImageInfo() {
@@ -103,7 +104,7 @@ func GetImageInfoList() []*ImageInfo {
 	// 返回所有容器的目录
 	imageDirs, err := os.ReadDir(AllImageLocation)
 	if err != nil {
-		fmt.Errorf("read dir %s error %v", AllImageLocation, err)
+		log.Printf("读取目录失败 %s %v", AllImageLocation, err)
 		return nil
 	}
 	// 记录所有容器的对象
@@ -111,7 +112,7 @@ func GetImageInfoList() []*ImageInfo {
 	for _, containerDir := range imageDirs {
 		tmpContainer, err := ReadImageInfo(containerDir)
 		if err != nil {
-			fmt.Errorf("Get container info error %v", err)
+			log.Printf("获取容器信息失败 %v", err)
 			continue
 		}
 		imageInfos = append(imageInfos, tmpContainer)
@@ -125,12 +126,12 @@ func ReadImageInfo(imageDir os.DirEntry) (*ImageInfo, error) {
 	imageInfoDir := dir + ImageConfigName
 	content, err := os.ReadFile(imageInfoDir)
 	if err != nil {
-		fmt.Errorf("read image Dir %s error %v", imageInfoDir, err)
+		log.Printf("读取镜像目录 Dir %s 失败 %v", imageInfoDir, err)
 		return nil, err
 	}
 	var info ImageInfo
 	if err := json.Unmarshal(content, &info); err != nil {
-		fmt.Errorf("json unmarshal error %v", err)
+		log.Printf("json 反序列失败 %v\n", err)
 		return nil, err
 	}
 	return &info, nil
@@ -140,12 +141,12 @@ func GetImageInfo(imageId string) (*ImageInfo, error) {
 	imageInfoFile := dir + ImageConfigName
 	content, err := os.ReadFile(imageInfoFile)
 	if err != nil {
-		fmt.Printf("read image info %s error %v \n", imageInfoFile, err)
+		log.Printf("读取镜像信息失败 %s %v \n", imageInfoFile, err)
 		return nil, err
 	}
 	var info ImageInfo
 	if err := json.Unmarshal(content, &info); err != nil {
-		fmt.Printf("json unmarshal error %v\n", err)
+		log.Printf("json 反序列失败 %v\n", err)
 		return nil, err
 	}
 	return &info, nil
@@ -153,7 +154,7 @@ func GetImageInfo(imageId string) (*ImageInfo, error) {
 
 func readDockerFile(dockerFile string) []string {
 	if !FileExist(dockerFile) {
-		fmt.Printf("docker file 不存在: %s", dockerFile)
+		log.Fatalf("docker file 不存在: %s", dockerFile)
 		return []string{}
 	}
 	file, _ := os.Open(dockerFile)
@@ -189,14 +190,14 @@ func readDockerFile(dockerFile string) []string {
 func BuildImage(tag string, dockerFile string) {
 	lines := readDockerFile(dockerFile)
 	if len(lines) == 0 {
-		fmt.Println("dockerfile解析失败")
-		return
+		log.Fatalln("dockerfile解析失败")
 	}
 	// 初始化 镜像信息
 	info := initImageInfo(tag)
 	// 初始化 dockerfile信息
 	d := initDockerFile()
 	for _, line := range lines {
+		log.Println(line)
 		switch {
 		case strings.HasPrefix(line, FROM):
 			d.from(line)
@@ -224,8 +225,7 @@ func BuildImage(tag string, dockerFile string) {
 	}
 	//创建镜像目录
 	if err := os.MkdirAll(fmt.Sprintf(ImageLayerLocation, info.Id), 0622); err != nil {
-		fmt.Printf("创建镜像目录失败: %v", err)
-		return
+		log.Fatalf("创建镜像目录失败: %v", err)
 	}
 	//信息拷贝到 镜像信息中
 	d.copy2ImageInfo(info)
@@ -304,7 +304,6 @@ func (d *DockerFile) add(a string) {
 	for i := 0; i < len(list)-1; i++ {
 		// 自动解压归档文件
 		if path.Ext(list[i]) == ".tar" {
-			fmt.Println("解压!!!!!!!!!")
 			UnTar(path.Join(pwd, list[i]), cpTarget)
 		} else {
 			Copy(path.Join(pwd, list[i]), cpTarget)
@@ -335,7 +334,6 @@ func (d *DockerFile) copy(c string) {
 		// 拷贝文件
 		Copy(path.Join(pwd, list[i]), cpTarget)
 	}
-	fmt.Println(list)
 }
 func (d *DockerFile) expose(e string) {
 	e = strings.TrimPrefix(e, EXPOSE)
@@ -431,7 +429,6 @@ func parseArray(s string) []string {
 		i++
 
 	}
-	fmt.Printf("dockerFile解析内容是: %v\n", array)
 	return array
 }
 
@@ -476,7 +473,6 @@ func parseCommandLine(s string) []string {
 		cmd = append(cmd, s[i:j])
 		i = j
 	}
-	fmt.Printf("dockerFile解析内容是: %v\n", cmd)
 	return cmd
 }
 
