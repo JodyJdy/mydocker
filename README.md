@@ -16,7 +16,8 @@
 
 ## buildBase
 
-容器启动需要一个镜像，该镜像要包含必要的linux的可执行文件，解压docker的busybox镜像，从中取出部分文件，打包成busybox.tar使用
+容器启动需要一个镜像，该镜像要包含必要的linux的可执行文件，解压docker的busybox镜像，从中取出部分文件，打包成busybox.tar使用；
+也可以使用alpine.tar,里面包含apk包管理工具，可以下载curl等工具
 
 ```shell
 ./mydocker  buildBase   busybox.tar
@@ -93,6 +94,7 @@ run 命令支持的参数有
     * container:容器标识   和指定容器共享网络  
     * bridgeName 指定网络
 * -p 配置端口映射 
+* -resolv  配置域名解析文件，默认是宿主机上面的
 
 启动一个交互式进程
 ```shell

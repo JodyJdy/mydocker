@@ -9,51 +9,54 @@ import (
 	"networks"
 	"os"
 	"os/exec"
+	"path"
 	"strconv"
 	"strings"
 	"syscall"
 )
 
-func Run(tty bool, cmdArray []string, res *cgroups.ResourceConfig, volumes []string, containerName string, env []string, image string, portMapping []string, net string) {
-	imageId := containers.ResolveImageId(image, false)
-	command := containers.ResolveCmd(cmdArray, imageId, tty)
+func Run(config containers.RunContainerConfig) {
+	imageId := containers.ResolveImageId(config.Image, false)
+	command := containers.ResolveCmd(config.CmdArray, imageId, config.Tty)
 	// 提前获取容器id
 	containerInfo := &containers.ContainerInfo{
 		Id:          containers.ContainerId(),
 		Command:     strings.Join(command.Cmds, " "),
 		Status:      containers.Running,
 		SetCgroup:   true,
-		PortMapping: portMapping,
+		PortMapping: config.PortMapping,
 	}
-	if containerName != "" {
-		if containers.ResolveContainerId(containerName, true) != "" {
-			fmt.Printf("容器名称重复 %s\n", containerName)
+	if config.ContainerName != "" {
+		if containers.ResolveContainerId(config.ContainerName, true) != "" {
+			fmt.Printf("容器名称重复 %s\n", config.ContainerName)
 			return
 		}
-		containerInfo.Name = containerName
+		containerInfo.Name = config.ContainerName
 	}
 	// 获取容器基础目录
 	containerInfo.BaseUrl = fmt.Sprintf(containers.ContainerInfoLocation, containerInfo.Id)
-	parent, writePipe := containers.NewParentProcess(containerInfo, tty, volumes, env, imageId)
+	parent, writePipe := containers.NewParentProcess(containerInfo, config.Tty, config.Volumes, config.Env, imageId)
 	if parent == nil {
-		log.Println("New parent process error")
+		log.Println("创建父进程失败")
 		return
 	}
+	//处理域名解析
+	processResolv(parent.Dir, config)
 	if err := parent.Start(); err != nil {
 		fmt.Printf("启动父进程失败:%v\n", err)
 	}
 	fmt.Printf("容器进程 pid: %d \n", parent.Process.Pid)
 	// 记录容器信息
 	containers.RecordContainerInfo(containerInfo, parent.Process.Pid)
-	cgroups.ProcessCgroup(containerInfo.Id, parent.Process.Pid, res)
+	cgroups.ProcessCgroup(containerInfo.Id, parent.Process.Pid, config.Res)
 
-	if net != "" {
+	if config.Net != "" {
 		networks.Init()
-		processNetWork(net, command, containerInfo)
+		processNetWork(config.Net, command, containerInfo)
 	}
 	// 将命令写到管道里面
 	containers.SendInitCommand(command, writePipe)
-	if tty {
+	if config.Tty {
 		// 等待parent进程执行完毕
 		err := parent.Wait()
 		if err != nil {
@@ -66,6 +69,14 @@ func Run(tty bool, cmdArray []string, res *cgroups.ResourceConfig, volumes []str
 		containers.DeleteContainerInfo(containerInfo)
 	}
 	os.Exit(-1)
+}
+func processResolv(containerDir string, config containers.RunContainerConfig) {
+	//处理 域名解析
+	resolv := containers.ResolveFile
+	if config.Resolv != "" {
+		resolv = config.Resolv
+	}
+	containers.CopyFile(resolv, path.Join(containerDir, "/etc/resolv.conf"))
 }
 func processNetWork(net string, cmd *containers.CommandArray, info *containers.ContainerInfo) {
 	// 什么都不做

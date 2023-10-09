@@ -35,4 +35,5 @@ var (
 	VolumeInfoLocation    = "/var/run/mydocker/volumes/%s/"
 	ContainerConfigName   = "config.json"
 	ContainerLogName      = "container.log"
+	ResolveFile           = "/etc/resolv.conf"
 )

@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"path"
 	"time"
 )
 
@@ -46,7 +47,27 @@ func FileExist(path string) bool {
 	return false
 }
 
-// Copy 文件拷贝
+// CopyFile 单文件拷贝
+func CopyFile(fromFile, toFile string) {
+	toDir := path.Dir(toFile)
+	_, err := os.Stat(path.Dir(toFile))
+	// 如果不存在进行创建
+	if err != nil {
+		err := os.MkdirAll(toDir, 0622)
+		if err != nil {
+			fmt.Printf("创建文件夹失败:%s, 原因: %v\n", toDir, err)
+			return
+		}
+	}
+	copyCmd := fmt.Sprintf("cp   %s  %s", fromFile, toFile)
+	cmd := exec.Command("sh", "-c", copyCmd)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Printf("拷贝文件错误:%s, %v\n", out, err)
+	}
+}
+
+// Copy 拷贝到目录
 func Copy(from, to string) {
 	info, err := os.Stat(to)
 	// 如果不存在进行创建
@@ -64,8 +85,6 @@ func Copy(from, to string) {
 	}
 	copyCmd := fmt.Sprintf("cp -R  %s  %s", from, to)
 	cmd := exec.Command("sh", "-c", copyCmd)
-	fmt.Println("拷贝命令")
-	fmt.Println(cmd.String())
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		fmt.Printf("拷贝文件错误:%s, %v\n", out, err)

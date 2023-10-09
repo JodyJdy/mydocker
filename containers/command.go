@@ -1,12 +1,28 @@
 package containers
 
 import (
+	"cgroups"
 	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 	"strings"
 )
+
+// RunContainerConfig run命令启动容器时的配置
+type RunContainerConfig struct {
+	Detach        bool
+	Tty           bool
+	CmdArray      []string
+	Volumes       []string
+	ContainerName string
+	Env           []string
+	Image         string
+	PortMapping   []string
+	Net           string
+	Resolv        string
+	Res           *cgroups.ResourceConfig
+}
 
 type CommandArray struct {
 	// 命令数组

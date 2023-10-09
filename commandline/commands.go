@@ -75,6 +75,10 @@ var RunCommand = cli.Command{
 			Name:  "p",
 			Usage: "port 映射",
 		},
+		cli.StringFlag{
+			Name:  "resolv",
+			Usage: "指定域名解析使用的文件，默认是宿主机的 /etc/resolv.conf",
+		},
 	},
 	// 具体的执行命令
 	Action: func(context *cli.Context) error {
@@ -83,35 +87,40 @@ var RunCommand = cli.Command{
 		for _, arg := range context.Args() {
 			cmdArray = append(cmdArray, arg)
 		}
+		var config containers.RunContainerConfig
+		config.CmdArray = cmdArray
 		// 获取tty参数
-		tty := context.Bool("ti")
+		config.Tty = context.Bool("ti")
 		// 获取 detach 参数
-		detach := context.Bool("d")
-		if tty && detach {
+		config.Detach = context.Bool("d")
+		if config.Tty && config.Detach {
 			return fmt.Errorf("ti 和 d 不能同时使用")
 		}
-		res := &cgroups.ResourceConfig{
+		config.Res = &cgroups.ResourceConfig{
 			MemoryLimit: context.String("m"),
 			CpuSet:      context.String("cpuset"),
 			CpuShare:    context.String("cpushare"),
 		}
 		// 获取卷挂载参数
-		volumes := context.StringSlice("v")
+		config.Volumes = context.StringSlice("v")
 		// 获取容器名称
-		containerName := context.String("name")
-		//获取容器名称
-		envSlice := context.StringSlice("e")
+		config.ContainerName = context.String("name")
+		//获取环境变量
+		config.Env = context.StringSlice("e")
 		// 获取使用的镜像
-		imageId := context.String("image")
+		config.Image = context.String("image")
 		// 端口映射
-		portmapping := context.StringSlice("p")
+		config.PortMapping = context.StringSlice("p")
 		// 所在的网络
-		network := context.String("net")
-		if imageId == "" {
+		config.Net = context.String("net")
+		//域名解析使用的文件
+		config.Resolv = context.String("resolv")
+
+		if config.Image == "" {
 			fmt.Println("镜像id不能为空")
 			return nil
 		}
-		run.Run(tty, cmdArray, res, volumes, containerName, envSlice, imageId, portmapping, network)
+		run.Run(config)
 		return nil
 	},
 }
