@@ -172,9 +172,11 @@ var ExecCommand = cli.Command{
 	Name:  "exec",
 	Usage: "在容器中执行命令",
 	Action: func(context *cli.Context) error {
-		// 说明当前是fork的进程，环境变量已经设置好， c语言的代码也已经执行了
+		// 说明当前是fork的进程，环境变量已经设置好， c语言的代码也已经执行了（运行的时机要早于下面的代码），真正要执行的命令
+		// 例如 sh，也已经退出了，直接结束即可
 		if os.Getenv(containers.ENV_EXEC_PID) != "" {
 			fmt.Printf("pid callback pid %d\n", os.Getpid())
+			//只是为了让nsenter模块生效，从而运行里面的c代码
 			nsenter.SetNs()
 			return nil
 		}
