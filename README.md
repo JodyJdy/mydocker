@@ -95,6 +95,8 @@ run 命令支持的参数有
     * bridgeName 指定网络
 * -p 配置端口映射 
 * -resolv  配置域名解析文件，默认是宿主机上面的
+* -command  当要执行的命令在EntryPoint中，需要附加参数时，附加的参数往往以 - 开头，会解析出错，使用 command规避
+
 
 启动一个交互式进程
 ```shell
@@ -104,6 +106,12 @@ run 命令支持的参数有
 ```shell
 ./mydocker run -d -image base  top
 ```
+为entrypoint命令附加 -b 参数
+```shell
+./mydocker run -ti -image base -command '-b '
+```
+
+
 启动带有网络的进程
 ```shell
 ./mydocker run -ti -image base -net testbridge sh

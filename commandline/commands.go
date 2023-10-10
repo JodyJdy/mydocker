@@ -79,13 +79,24 @@ var RunCommand = cli.Command{
 			Name:  "resolv",
 			Usage: "指定域名解析使用的文件，默认是宿主机的 /etc/resolv.conf",
 		},
+		cli.StringFlag{
+			Name:  "command",
+			Usage: "执行的命令,当命令中含有 - 等特殊字符时，使用 command作为输入",
+		},
 	},
 	// 具体的执行命令
 	Action: func(context *cli.Context) error {
 		// 获取要执行run的命令
 		var cmdArray []string
-		for _, arg := range context.Args() {
-			cmdArray = append(cmdArray, arg)
+		cmd := context.String("command")
+		//从 command命令中取要执行的命令
+		if cmd != "" {
+			cmdArray = append(cmdArray, cmd)
+		} else {
+			//从参数中取要执行的命令
+			for _, arg := range context.Args() {
+				cmdArray = append(cmdArray, arg)
+			}
 		}
 		var config containers.RunContainerConfig
 		config.CmdArray = cmdArray
