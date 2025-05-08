@@ -1,3 +1,11 @@
+# 编译
+需要在linux环境下面进行编译打包，执行
+即可
+```shell
+go install
+go build
+```
+
 # mydocker
 
 支持以下命令
