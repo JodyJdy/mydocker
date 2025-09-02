@@ -1,6 +1,5 @@
 # 编译
-需要在linux环境下面进行编译打包，执行
-即可
+需要在linux环境下面进行编译打包，执行下面命令即可
 ```shell
 go install
 go build
@@ -24,13 +23,13 @@ go build
 
 ## buildBase
 
-容器启动需要一个镜像，该镜像要包含必要的linux的可执行文件，解压docker的busybox镜像，从中取出部分文件，打包成busybox.tar使用；
+容器启动需要一个基础镜像，该镜像要包含必要的linux的可执行文件，解压docker hub的busybox镜像，从中取出部分文件，打包成busybox.tar作为项目的基础镜像使用；
 也可以使用alpine.tar,里面包含apk包管理工具，可以下载curl等工具
 
 ```shell
 ./mydocker  buildBase   busybox.tar
 ```
-此时可以看到多另一个名称为base的镜像
+此时可以看到多了一个名称为base的镜像
 ```shell
 ./mydocker images
 
