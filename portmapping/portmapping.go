@@ -133,8 +133,3 @@ func RemovePort(strPort string) {
 	}
 	portMapping.removePort(port)
 }
-
-func Main() {
-	ch := make(chan int)
-	fmt.Println(<-ch)
-}
