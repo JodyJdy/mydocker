@@ -87,8 +87,8 @@ run 命令支持的参数有
 
 * -ti  交互式启动容器， 关闭tty，容器也会关闭 
 * -m 设置容器的内存限制，例如:   -m 100m   限制内存为100m
-* -cpushare 设置cpu时间片权重， 例如:  --cpushare 510
-*  -cpuset 设置cpu核心数，例如:  --cpuset 2
+* -cpushare 设置cpu时间片权重， 例如:  -cpushare 510
+* -cpuset 设置cpu核心数，例如:  -cpuset 2
 * -v 挂载volume，可挂载多个
 * -d    后台运行进程
 * -name 容器名称  container name

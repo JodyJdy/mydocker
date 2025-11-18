@@ -39,19 +39,21 @@ type DockerFile struct {
 	EntryPointShellType bool     //entrypoint是shell类型还是exec类型
 	CMD                 []string // CMD
 	CMDShellType        bool     // cmd是shell类型还是exec类型
-	Volumes             []string
+	Volume              []string
 	// 工作目录
 	WorkDir string
 	Info    *ContainerInfo // 构建过程中使用的容器的信息
 }
 
-const FROM = "FROM"
-const RUN = "RUN"
-const ADD = "ADD"
-const COPY = "COPY"
-const EXPOSE = "EXPOSE"
-const ENV = "ENV"
-const CMD = "CMD"
-const ENTRYPOINT = "ENTRYPOINT"
-const VOLUME = "VOLUME"
-const WORKDIR = "WORKDIR"
+const (
+	FROM       = "FROM"
+	RUN        = "RUN"
+	ADD        = "ADD"
+	COPY       = "COPY"
+	EXPOSE     = "EXPOSE"
+	ENV        = "ENV"
+	CMD        = "CMD"
+	ENTRYPOINT = "ENTRYPOINT"
+	VOLUME     = "VOLUME"
+	WORKDIR    = "WORKDIR"
+)

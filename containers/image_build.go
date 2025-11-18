@@ -152,45 +152,59 @@ func GetImageInfo(imageId string) (*ImageInfo, error) {
 	return &info, nil
 }
 
-func readDockerFile(dockerFile string) []string {
+func readDockerFile(dockerFile string) ([]string, error) {
 	if !FileExist(dockerFile) {
-		log.Fatalf("docker file 不存在: %s", dockerFile)
-		return []string{}
+		return nil, fmt.Errorf("docker file 不存在: %s", dockerFile)
 	}
-	file, _ := os.Open(dockerFile)
-	r := bufio.NewReader(file)
-	var lines []string
-	for {
-		s, _, err := r.ReadLine()
-		// 读取结束
-		if err != nil {
-			break
-		}
-		lines = append(lines, string(s))
+
+	file, err := os.Open(dockerFile)
+	if err != nil {
+		return nil, fmt.Errorf("打开 docker file 失败: %w", err)
 	}
-	// 合并多行
-	var resultLine []string
-	line := ""
-	for _, tempLine := range lines {
-		if tempLine == "" {
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	var result []string
+	var currentLine strings.Builder
+
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+
+		// 跳过空行和注释行
+		if line == "" || strings.HasPrefix(line, "#") {
 			continue
 		}
-		if tempLine[len(tempLine)-1] != '\\' {
-			resultLine = append(resultLine, line+tempLine)
-			line = ""
-		} else {
-			line += tempLine[0 : len(tempLine)-1]
+
+		// 续行处理（以 \ 结尾）
+		if strings.HasSuffix(line, `\`) {
+			currentLine.WriteString(strings.TrimSuffix(line, `\`))
+			currentLine.WriteString(" ") // 保留一个空格，避免拼接时连在一起
+			continue
 		}
+
+		// 最后一行或完整行
+		currentLine.WriteString(line)
+		result = append(result, strings.TrimSpace(currentLine.String()))
+		currentLine.Reset()
 	}
-	if line != "" {
-		resultLine = append(resultLine, line)
+
+	// 处理扫描错误
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("读取 docker file 出错: %w", err)
 	}
-	return resultLine
+
+	// 如果还有残留未加入（可能文件结尾是续行）
+	if currentLine.Len() > 0 {
+		result = append(result, strings.TrimSpace(currentLine.String()))
+	}
+
+	return result, nil
 }
 func BuildImage(tag string, dockerFile string) {
-	lines := readDockerFile(dockerFile)
-	if len(lines) == 0 {
-		log.Fatalln("dockerfile解析失败")
+	lines, err := readDockerFile(dockerFile)
+
+	if err != nil {
+		log.Fatalf("dockerfile解析失败 %v \n", err)
 	}
 	// 初始化 镜像信息
 	info := initImageInfo(tag)
@@ -256,7 +270,7 @@ func initDockerFile() *DockerFile {
 		// 默认的工作目录
 		WorkDir:    "/",
 		Env:        []string{},
-		Volumes:    []string{},
+		Volume:     []string{},
 		CMD:        []string{},
 		EntryPoint: []string{},
 		Expose:     []string{},
@@ -371,7 +385,7 @@ func (d *DockerFile) entrypoint(e string) {
 }
 func (d *DockerFile) volume(v string) {
 	v = strings.TrimPrefix(v, VOLUME)
-	d.Volumes = parseCommandLine(v)
+	d.Volume = parseCommandLine(v)
 }
 func (d *DockerFile) workDir(w string) {
 	w = strings.TrimPrefix(w, WORKDIR)
@@ -382,7 +396,7 @@ func (d *DockerFile) copy2ImageInfo(info *ImageInfo) {
 	info.WorkDir = d.WorkDir
 	info.From = d.From
 	info.Env = d.Env
-	info.Volume = d.Volumes
+	info.Volume = d.Volume
 	info.CMD = d.CMD
 	info.EntryPoint = d.EntryPoint
 	info.EntryPointShellType = d.EntryPointShellType
@@ -401,140 +415,116 @@ func isArrayType(s string) (string, bool) {
 
 // 解析 ["a","b"] 类型
 func parseArray(s string) []string {
-	le := len(s)
 	var array []string
-	for i := 0; i < le; {
-		if s[i] == '[' || s[i] == ',' {
-			i++
-			continue
-		}
-		if s[i] == '"' && i+1 < le {
-			if s[i+1] == '"' {
-				i += 2
-				continue
-			}
-			j := i + 1
-			for ; j < le; j++ {
-				if s[j] == '"' && s[j-1] != '\\' {
-					array = append(array, s[i+1:j])
-					break
-				}
-			}
-			i = j + 1
-			continue
-		}
-		if s[i] == ']' {
-			break
-		}
-		i++
-
-	}
+	_ = json.Unmarshal([]byte(s), &array) // 忽略错误，可根据需要处理
 	return array
 }
 
-// 解析  非数组类型
+// 解析 非数组类型
 func parseCommandLine(s string) []string {
 	le := len(s)
-	var cmd []string
-	for i := 0; i < le; {
-		if s[i] == ' ' {
+	cmd := make([]string, 0, 8) // 预分配容量
+
+	i := 0
+	for i < le {
+		// 跳过前导空格
+		for i < le && s[i] == ' ' {
+			i++
+		}
+		if i >= le {
+			break
+		}
+
+		// 如果参数是引号包裹的
+		if s[i] == '"' {
+			i++ // 跳过开头的引号
+			start := i
 			for i < le {
-				if s[i] == ' ' {
-					i++
-				} else {
+				if s[i] == '"' && (i == start || s[i-1] != '\\') {
+					cmd = append(cmd, s[start:i])
+					i++ // 跳过结尾引号
 					break
 				}
+				i++
 			}
-			continue
+		} else {
+			// 普通参数
+			start := i
+			for i < le && s[i] != ' ' && s[i] != '"' {
+				i++
+			}
+			cmd = append(cmd, s[start:i])
 		}
-		if s[i] == '"' && i+1 < le {
-			if s[i+1] == '"' {
-				i += 2
-				continue
-			}
-			j := i + 1
-			for ; j < le; j++ {
-				if s[j] == '"' && s[j-1] != '\\' {
-					cmd = append(cmd, s[i+1:j])
-					break
-				}
-			}
-			i = j + 1
-			continue
-		}
-		j := i + 1
-		for j < le {
-			if s[j] == ' ' || s[j] == '"' {
-				break
-			} else {
-				j++
-			}
-		}
-		cmd = append(cmd, s[i:j])
-		i = j
 	}
 	return cmd
 }
 
 func parseEnv(s string) []string {
-	//先根据第一个key 后面的字符是 空格 还是 = 判断是 单环境变量 还是多环境变量
-	singleEnv := true
-	i := 0
-	for i = 0; i < len(s); i++ {
-		if s[i] == ' ' {
-			break
-		} else if s[i] == '=' {
-			singleEnv = false
-			break
-		}
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return nil
 	}
-	if singleEnv {
-		return []string{s[0:i] + "=" + s[i+1:]}
+
+	// 检测是否是单环境变量格式
+	firstSpace := strings.IndexByte(s, ' ')
+	firstEq := strings.IndexByte(s, '=')
+	if firstSpace != -1 && (firstEq == -1 || firstSpace < firstEq) {
+		// 单环境变量
+		key := s[:firstSpace]
+		val := strings.TrimSpace(s[firstSpace+1:])
+		return []string{key + "=" + val}
 	}
+
+	// 多环境变量解析
 	var env []string
-	l := 0
+	i := 0
 	for i < len(s) {
-		key := s[l : i+1]
-		i++
-		l = i
-		//解析value
-		for i < len(s) {
-			//跳出字符串
-			if s[i] == '"' {
-				i++
-				for i < len(s) {
-					if s[i] == '"' {
-						i++
-						break
-					}
-					i++
-				}
-			}
-			if i == len(s) {
-				break
-			}
-			if s[i] == ' ' && s[i-1] == '\\' {
-				i++
-				continue
-			}
-			if i < len(s) && s[i] == ' ' {
-				break
-			}
-			i++
-		}
-		// 反斜杠加空格 表示空格，这里进行还原
-		env = append(env, key+strings.ReplaceAll(s[l:i], "\\ ", " "))
-		// 解析key
-		for i < len(s) && s[i] == ' ' {
-			i++
-		}
-		l = i
+		// 解析 key
+		startKey := i
 		for i < len(s) && s[i] != '=' {
+			i++
+		}
+		if i >= len(s) {
+			break
+		}
+		key := strings.TrimSpace(s[startKey:i]) + "="
+		i++ // 跳过 '='
+
+		// 解析 value
+		var valBuilder strings.Builder
+		if i < len(s) && s[i] == '"' {
+			// 引号包裹的值
+			i++
+			for i < len(s) {
+				if s[i] == '"' && (i == 0 || s[i-1] != '\\') {
+					i++
+					break
+				}
+				valBuilder.WriteByte(s[i])
+				i++
+			}
+		} else {
+			// 普通值
+			for i < len(s) && s[i] != ' ' {
+				// 处理转义空格
+				if s[i] == '\\' && i+1 < len(s) && s[i+1] == ' ' {
+					valBuilder.WriteByte(' ')
+					i += 2
+					continue
+				}
+				valBuilder.WriteByte(s[i])
+				i++
+			}
+		}
+
+		env = append(env, key+valBuilder.String())
+
+		// 跳过空格，继续解析下一个
+		for i < len(s) && s[i] == ' ' {
 			i++
 		}
 	}
 	return env
-
 }
 
 func ResolveImageId(idOrName string, justName bool) string {
