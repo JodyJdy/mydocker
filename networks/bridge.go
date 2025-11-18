@@ -44,20 +44,26 @@ func (d *BridgeNetworkDriver) initBridge(n *Network) error {
 
 	// 创建bridge虚拟设备
 	bridgeName := n.Name
+	log.Println("创建bridge:", bridgeName)
+
 	if err := createBridgeInterface(bridgeName); err != nil {
 		return fmt.Errorf("添加bridge失败 %s,  %v", bridgeName, err)
 	}
 	//设置bridge 地址和路由
 	gatewayIP := *n.IpRange
 	gatewayIP.IP = n.IpRange.IP
+
+	log.Println("设置bridge地址", bridgeName, " ip: ", gatewayIP.IP)
 	if err := SetInterfaceIP(bridgeName, gatewayIP.String()); err != nil {
 		return fmt.Errorf("网桥上面设置地址 失败,ip : %s 网桥 : %s  %v", gatewayIP, bridgeName, err)
 	}
+	log.Println("启动bridge:", bridgeName)
 	//启动bridge
 	if err := SetInterfaceUP(bridgeName); err != nil {
 		return fmt.Errorf("启动网桥失败  %s   %v", bridgeName, err)
 	}
 
+	log.Println("配置iptables,bridge name", bridgeName)
 	// 设置 iptables
 	if err := setupIPTables(bridgeName, n.IpRange); err != nil {
 		return fmt.Errorf("设置iptalbes 失败, 网桥:%s: %v", bridgeName, err)
@@ -68,6 +74,8 @@ func (d *BridgeNetworkDriver) initBridge(n *Network) error {
 func (BridgeNetworkDriver) Delete(network Network) error {
 	// 删除bridge
 	bridgeName := network.Name
+
+	log.Println("删除bridge:", bridgeName)
 	br, err := netlink.LinkByName(bridgeName)
 	if err != nil {
 		return err
@@ -116,6 +124,7 @@ func setupIPTables(bridgeName string, subnet *net.IPNet) error {
 	// 只要是 这个网桥上发出的包 ，都会做源ip地址转换，保证了 容器 访问外部网络的数据包使用宿主机ip
 	iptablesCmd := fmt.Sprintf("-t nat -A POSTROUTING -s %s ! -o %s -j MASQUERADE", subnet.String(), bridgeName)
 	cmd := exec.Command("iptables", strings.Split(iptablesCmd, " ")...)
+	log.Println("执行iptables 命令:", cmd)
 	// 执行命令或获取输出
 	output, err := cmd.Output()
 	if err != nil {
